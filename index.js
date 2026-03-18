@@ -1,3 +1,4 @@
+require('dotenv').config();
 /**
  * 整骨院 LINE予約ボット
  * LINE Messaging API (Node.js / Express)
