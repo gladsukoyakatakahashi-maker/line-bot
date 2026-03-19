@@ -19,14 +19,16 @@ const CLINIC = {
 };
 
 const MENUS = [
-  { id: 'shinkan',  label: '新患施術',             time: '60〜90分', price: '初回カウンセリング込み', needsDetail: true },
-  { id: 'ippan',    label: '一般施術',             time: '40分',     price: '施術内容により異なる',   needsDetail: true },
-  { id: 'kotsuban', label: '骨盤矯正',             time: '40分',     price: '3,300円',               needsDetail: false },
-  { id: 'nekoze',   label: '猫背矯正',             time: '40分',     price: '2,750円',               needsDetail: false },
-  { id: 'stretch',  label: '下肢ストレッチ',       time: '40分',     price: '2,750円',               needsDetail: false },
-  { id: 'personal', label: 'パーソナルトレーニング', time: '40分',   price: '4,950円',               needsDetail: false },
-  { id: 'rehab',    label: 'リハビリ',             time: '40分',     price: '4,950円',               needsDetail: false },
+  { id: 'shinkan',  label: '新患施術',              time: '60〜90分', price: '初回カウンセリング込み', needsDetail: true },
+  { id: 'ippan',    label: '一般施術',              time: '40分',     price: '施術内容により異なる',   needsDetail: true },
+  { id: 'kotsuban', label: '骨盤矯正',              time: '40分',     price: '3,300円',               needsDetail: false },
+  { id: 'nekoze',   label: '猫背矯正',              time: '40分',     price: '2,750円',               needsDetail: false },
+  { id: 'stretch',  label: '下肢ストレッチ',        time: '40分',     price: '2,750円',               needsDetail: false },
+  { id: 'personal', label: 'パーソナルトレーニング', time: '40分',    price: '4,950円',               needsDetail: false },
+  { id: 'rehab',    label: 'リハビリ',              time: '40分',     price: '4,950円',               needsDetail: false },
 ];
+
+const SYMPTOMS = ['肩こり', '腰痛', '産後の骨盤矯正', '交通事故の治療', 'リハビリ'];
 
 const OPEN_DAYS = [2, 3, 4, 5, 6];
 
@@ -75,22 +77,46 @@ async function handleText(event) {
     case 'await_phone':
       session.phone = t;
       if (session.booking.menu && session.booking.menu.needsDetail) {
-        session.step = 'await_menu_detail';
-        return client.replyMessage(replyToken, {
-          type: 'text',
-          text: '希望の施術内容をご記入ください。\n例）腰痛、肩こり、交通事故後のリハビリ など',
-        });
+        session.step = 'await_symptom';
+        return client.replyMessage(replyToken, makeSymptomSelect());
       }
       session.step = 'await_first_visit';
       return client.replyMessage(replyToken, makeFirstVisitSelect());
 
-    case 'await_menu_detail':
-      session.booking.menuDetail = t;
+    case 'await_symptom':
+      session.booking.symptom = t;
       session.step = 'await_first_visit';
       return client.replyMessage(replyToken, makeFirstVisitSelect());
 
-    case 'await_cancel_phone':
-      return handleCancelSearch(replyToken, userId, t);
+    case 'await_manage_name':
+      session.step = 'idle';
+      return client.replyMessage(replyToken, {
+        type: 'flex',
+        altText: 'お問い合わせを受け付けました',
+        contents: {
+          type: 'bubble',
+          header: {
+            type: 'box', layout: 'vertical', backgroundColor: '#2c7a7b',
+            contents: [{ type: 'text', text: '✅ 受け付けました', color: '#fff', weight: 'bold' }],
+          },
+          body: {
+            type: 'box', layout: 'vertical', spacing: 'sm',
+            contents: [
+              { type: 'text', text: `${t} 様`, weight: 'bold', size: 'md' },
+              { type: 'separator', margin: 'md' },
+              {
+                type: 'text', wrap: true, size: 'sm', color: '#444444', margin: 'md',
+                text: 'こちらから内容確認いたしますので、しばらくお待ちください。\n\nご不明な点はお電話でもお気軽にどうぞ。',
+              },
+              { type: 'text', text: `📞 ${CLINIC.tel}`, size: 'sm', color: '#1a6b5a', margin: 'sm', align: 'center' },
+            ],
+          },
+          footer: {
+            type: 'box', layout: 'vertical',
+            contents: [{ type: 'button', style: 'secondary', action: { type: 'postback', label: 'メニューに戻る', data: 'action=main_menu', displayText: 'メニューに戻る' } }],
+          },
+        },
+      });
 
     default:
       return sendMainMenu(replyToken);
@@ -134,6 +160,11 @@ async function handlePostback(event) {
       });
     }
 
+    case 'select_symptom':
+      session.booking.symptom = decodeURIComponent(params.get('symptom'));
+      session.step = 'await_first_visit';
+      return client.replyMessage(replyToken, makeFirstVisitSelect());
+
     case 'first_visit':
       session.booking.isFirst = params.get('val') === 'true';
       session.step = 'confirm_booking';
@@ -150,31 +181,11 @@ async function handlePostback(event) {
     }
 
     case 'manage_booking':
-      session.step = 'await_cancel_phone';
+      session.step = 'await_manage_name';
       return client.replyMessage(replyToken, {
         type: 'text',
-        text: 'ご登録のお電話番号を入力してください。\n予約を検索します。',
+        text: '予約の確認・変更・取消のご要望ですね。\n\nお名前をお願いいたします。',
       });
-
-    case 'change_booking':
-      session.changingBookingId = params.get('id');
-      session.step = 'select_date';
-      session.booking = { isChanging: true };
-      return client.replyMessage(replyToken, [
-        { type: 'text', text: '新しい日時を選択してください。' },
-        makeDatePicker(),
-      ]);
-
-    case 'cancel_booking':
-      return client.replyMessage(replyToken, makeCancelConfirm(params.get('id')));
-
-    case 'cancel_confirmed':
-      deleteBooking(params.get('id'));
-      session.step = 'idle';
-      return client.replyMessage(replyToken, [
-        { type: 'text', text: `予約番号 ${params.get('id')} をキャンセルしました。\nまたのご来院をお待ちしております。` },
-        makeBackToMenuFlex(),
-      ]);
 
     case 'show_menus':
       return client.replyMessage(replyToken, makeMenuCarousel());
@@ -294,6 +305,24 @@ function makeMenuSelect() {
   };
 }
 
+function makeSymptomSelect() {
+  return {
+    type: 'text',
+    text: '気になる症状をお聞かせください。\n以下からお選びいただくか、直接入力してください。\n（例：肩こり、腰痛、産後の骨盤矯正、交通事故の治療、リハビリ）',
+    quickReply: {
+      items: SYMPTOMS.map(s => ({
+        type: 'action',
+        action: {
+          type: 'postback',
+          label: s,
+          data: `action=select_symptom&symptom=${encodeURIComponent(s)}`,
+          displayText: s,
+        },
+      })),
+    },
+  };
+}
+
 function makeFirstVisitSelect() {
   return {
     type: 'text', text: '初診・再診をお選びください',
@@ -308,14 +337,14 @@ function makeFirstVisitSelect() {
 
 function makeBookingConfirm(booking) {
   const rows = [
-    makeInfoRow('日時', `${booking.date} ${booking.time}`),
+    makeInfoRow('日時（希望）', `${booking.date} ${booking.time}`),
     makeInfoRow('施術', booking.menu.label),
     makeInfoRow('料金', booking.menu.price),
     makeInfoRow('お名前', `${booking.name} 様`),
     makeInfoRow('電話番号', booking.phone),
     makeInfoRow('区分', booking.isFirst ? '初診' : '再診'),
   ];
-  if (booking.menuDetail) rows.push(makeInfoRow('ご要望', booking.menuDetail));
+  if (booking.symptom) rows.push(makeInfoRow('気になる症状', booking.symptom));
   return {
     type: 'flex', altText: '予約内容の確認',
     contents: {
@@ -345,19 +374,33 @@ function makeInfoRow(label, value) {
 
 function makeBookingComplete(booking, bookingId) {
   return {
-    type: 'flex', altText: '予約が完了しました',
+    type: 'flex', altText: '予約受付が完了しました',
     contents: {
       type: 'bubble',
-      header: { type: 'box', layout: 'vertical', backgroundColor: '#2e7d32', contents: [{ type: 'text', text: '✅ 予約が完了しました', color: '#fff', weight: 'bold' }] },
+      header: {
+        type: 'box', layout: 'vertical', backgroundColor: '#2e7d32',
+        contents: [{ type: 'text', text: '✅ 予約受付が完了しました', color: '#fff', weight: 'bold' }],
+      },
       body: {
         type: 'box', layout: 'vertical', spacing: 'sm',
         contents: [
-          makeInfoRow('予約番号', bookingId),
-          makeInfoRow('日時', `${booking.date} ${booking.time}`),
+          makeInfoRow('受付番号', bookingId),
+          makeInfoRow('日時（希望）', `${booking.date} ${booking.time}`),
           makeInfoRow('施術', booking.menu.label),
           { type: 'separator', margin: 'md' },
-          { type: 'text', text: '当日は5分前にお越しください。\nキャンセルは前日までにご連絡ください。', wrap: true, size: 'xs', color: '#888888' },
-          { type: 'text', text: `📞 ${CLINIC.tel}`, size: 'xs', color: '#1a6b5a', margin: 'sm' },
+          {
+            type: 'box', layout: 'vertical',
+            backgroundColor: '#fff8e1', paddingAll: '12px',
+            cornerRadius: '8px', margin: 'md',
+            contents: [
+              { type: 'text', text: '📞 ご予約確定について', weight: 'bold', size: 'sm', color: '#bf6f00', wrap: true },
+              {
+                type: 'text', size: 'xs', color: '#555555', wrap: true, margin: 'sm',
+                text: '整骨院よりご予約内容の確認のお電話が届き次第、ご予約完了となります。\n当日〜翌日の間にご連絡いたします。\nご了承ください。',
+              },
+            ],
+          },
+          { type: 'text', text: `📞 ${CLINIC.tel}`, size: 'xs', color: '#1a6b5a', margin: 'sm', align: 'center' },
         ],
       },
       footer: {
@@ -381,7 +424,6 @@ function makeMenuCarousel() {
           contents: [
             makeInfoRow('⏱ 時間', m.time),
             makeInfoRow('💴 料金', m.price),
-            ...(m.needsDetail ? [{ type: 'text', text: '※ご予約後に希望施術内容を入力いただきます', size: 'xxs', color: '#888888', wrap: true, margin: 'sm' }] : []),
           ],
         },
         footer: {
@@ -395,7 +437,7 @@ function makeMenuCarousel() {
 
 const MENU_DESCRIPTIONS = {
   shinkan:  '初めてご来院の方向けです。問診・検査・施術を含む丁寧なカウンセリングを行います（60〜90分）。',
-  ippan:    '通院中の方向けの施術です。ご予約時に希望施術内容をお知らせください。',
+  ippan:    '通院中の方向けの施術です。ご予約時に気になる症状をお知らせください。',
   kotsuban: '骨盤のゆがみを整え、腰痛・産後の不調・姿勢改善に効果的です。',
   nekoze:   '背骨・肩甲骨まわりを整え、猫背・肩こり・首こりの改善を目指します。',
   stretch:  '下肢の筋肉・関節をほぐし、股関節・膝・足首の可動域を広げます。',
@@ -429,76 +471,10 @@ function makeMenuDetail(m) {
   };
 }
 
-function makeCancelConfirm(bookingId) {
-  return {
-    type: 'flex', altText: 'キャンセルの確認',
-    contents: {
-      type: 'bubble',
-      body: {
-        type: 'box', layout: 'vertical', spacing: 'md',
-        contents: [
-          { type: 'text', text: '⚠️ キャンセルの確認', weight: 'bold' },
-          { type: 'text', text: `予約番号 ${bookingId} をキャンセルします。よろしいですか？`, wrap: true, size: 'sm' },
-        ],
-      },
-      footer: {
-        type: 'box', layout: 'horizontal', spacing: 'sm',
-        contents: [
-          { type: 'button', style: 'secondary', action: { type: 'postback', label: '戻る', data: 'action=manage_booking' } },
-          { type: 'button', style: 'primary', color: '#c0392b', action: { type: 'postback', label: 'キャンセルする', data: `action=cancel_confirmed&id=${bookingId}` } },
-        ],
-      },
-    },
-  };
-}
-
-function makeBackToMenuFlex() {
-  return {
-    type: 'flex', altText: 'メニューに戻る',
-    contents: {
-      type: 'bubble',
-      body: { type: 'box', layout: 'vertical', contents: [{ type: 'button', style: 'secondary', action: { type: 'postback', label: 'メニューに戻る', data: 'action=main_menu', displayText: 'メニューに戻る' } }] },
-    },
-  };
-}
-
-async function handleCancelSearch(replyToken, userId, phone) {
-  const session = getSession(userId);
-  session.step = 'idle';
-  const dummyBookings = [
-    { id: 'BK001', date: '2026-03-25', time: '10:10', menu: '骨盤矯正' },
-  ];
-  if (!dummyBookings.length) {
-    return client.replyMessage(replyToken, { type: 'text', text: `電話番号 ${phone} の予約が見つかりませんでした。\n📞 ${CLINIC.tel}` });
-  }
-  return client.replyMessage(replyToken, {
-    type: 'flex', altText: '予約一覧',
-    contents: {
-      type: 'carousel',
-      contents: dummyBookings.map(b => ({
-        type: 'bubble',
-        body: { type: 'box', layout: 'vertical', spacing: 'sm', contents: [
-          { type: 'text', text: `予約番号: ${b.id}`, weight: 'bold' },
-          makeInfoRow('日時', `${b.date} ${b.time}`),
-          makeInfoRow('施術', b.menu),
-        ]},
-        footer: { type: 'box', layout: 'horizontal', spacing: 'sm', contents: [
-          { type: 'button', style: 'secondary', action: { type: 'postback', label: '変更する', data: `action=change_booking&id=${b.id}` } },
-          { type: 'button', style: 'primary', color: '#c0392b', action: { type: 'postback', label: 'キャンセル', data: `action=cancel_booking&id=${b.id}` } },
-        ]},
-      })),
-    },
-  });
-}
-
 function saveBooking(session) {
   const id = 'BK' + Date.now().toString().slice(-6);
   console.log('予約保存:', { id, ...session.booking });
   return id;
-}
-
-function deleteBooking(bookingId) {
-  console.log('予約削除:', bookingId);
 }
 
 const PORT = process.env.PORT || 3000;
