@@ -60,9 +60,82 @@ async function handleText(event) {
   const session = getSession(userId);
   const t = text.trim();
 
+  // ─── リセットキーワード ───────────────────────────────
   if (['メニュー','menu','最初','やり直し','ホーム','トップ'].includes(t)) {
     session.step = 'idle';
     return sendMainMenu(replyToken);
+  }
+
+  // ─── キーワード反応（セッション待機中でない場合のみ）──────
+  if (session.step === 'idle') {
+    const lower = t.toLowerCase();
+
+    if (['予約','よやく','予約したい','予約お願い','よやくしたい','reserve','booking'].some(k => lower.includes(k))) {
+      session.step = 'select_date';
+      session.booking = {};
+      return client.replyMessage(replyToken, [
+        { type: 'text', text: 'ご予約ですね！\n以下から日程をお選びください。' },
+        makeDatePicker(),
+      ]);
+    }
+
+    if (['料金','メニュー','施術','値段','いくら','price','menu'].some(k => lower.includes(k))) {
+      return client.replyMessage(replyToken, makeMenuCarousel());
+    }
+
+    if (['営業','時間','何時','休み','定休','open','hour'].some(k => lower.includes(k))) {
+      return client.replyMessage(replyToken, {
+        type: 'flex',
+        altText: '営業時間のご案内',
+        contents: {
+          type: 'bubble',
+          header: { type: 'box', layout: 'vertical', backgroundColor: '#1a6b5a', contents: [{ type: 'text', text: '🕐 営業時間', color: '#fff', weight: 'bold' }] },
+          body: {
+            type: 'box', layout: 'vertical', spacing: 'md',
+            contents: [
+              { type: 'text', text: '火〜金曜日', weight: 'bold', size: 'sm' },
+              { type: 'text', text: '午前：9:30〜12:10\n午後：15:00〜19:00', size: 'sm', color: '#444444', wrap: true },
+              { type: 'separator' },
+              { type: 'text', text: '土曜日', weight: 'bold', size: 'sm' },
+              { type: 'text', text: '午前：9:30〜12:10\n午後：15:00〜17:40', size: 'sm', color: '#444444', wrap: true },
+              { type: 'separator' },
+              { type: 'text', text: '休院日：日・月・祝日', size: 'sm', color: '#e53935', wrap: true },
+              { type: 'text', text: `📞 ${CLINIC.tel}`, size: 'sm', color: '#1a6b5a', margin: 'md', align: 'center' },
+            ],
+          },
+          footer: {
+            type: 'box', layout: 'vertical',
+            contents: [{ type: 'button', style: 'primary', color: '#1a6b5a', action: { type: 'postback', label: '予約する', data: 'action=new_booking', displayText: '予約する' } }],
+          },
+        },
+      });
+    }
+
+    if (['電話','tel','phone','連絡'].some(k => lower.includes(k))) {
+      return client.replyMessage(replyToken, {
+        type: 'text',
+        text: `📞 健やか整骨院 豊玉\n\n電話番号：${CLINIC.tel}\n\n営業時間内にお気軽にお電話ください。\n火〜金 9:30〜19:00\n土 9:30〜17:40`,
+      });
+    }
+
+    if (['場所','アクセス','住所','どこ','地図','map','address'].some(k => lower.includes(k))) {
+      return client.replyMessage(replyToken, {
+        type: 'text',
+        text: '📍 健やか整骨院 豊玉\n\nご来院の際はお電話またはLINEでご予約のうえお越しください。\n\n📞 03-5946-9959',
+      });
+    }
+
+    if (['こんにちは','こんばんは','おはよう','はじめまして','hello','hi','よろしく'].some(k => lower.includes(k))) {
+      return client.replyMessage(replyToken, [
+        { type: 'text', text: `こんにちは！\n${CLINIC.name}のLINE予約窓口です😊\n\nご予約やお問い合わせをどうぞ。` },
+        makeMainMenuFlex(),
+      ]);
+    }
+
+    return client.replyMessage(replyToken, [
+      { type: 'text', text: 'ご用件をお選びください。' },
+      makeMainMenuFlex(),
+    ]);
   }
 
   switch (session.step) {
