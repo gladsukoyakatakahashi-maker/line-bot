@@ -428,28 +428,33 @@ function makeBookingConfirm(booking) {
     makeInfoRow('区分', booking.isFirst ? '初診' : '再診'),
   ];
   if (booking.symptom) rows.push(makeInfoRow('気になる症状', booking.symptom));
-  rows.push({ type: 'separator', margin: 'md' });
-  rows.push({
-    type: 'box', layout: 'vertical',
-    backgroundColor: '#fff8e1', paddingAll: '10px',
-    cornerRadius: '8px', margin: 'md',
-    contents: [
-      { type: 'text', text: '📞 ご予約確定について', weight: 'bold', size: 'xs', color: '#bf6f00', wrap: true },
-      {
-        type: 'text', size: 'xs', color: '#555555', wrap: true, margin: 'sm',
-        text: '整骨院よりご予約内容の確認のお電話が届き次第、ご予約完了となります。\n当日〜翌日の間にご連絡いたします。\nご了承ください。',
-      },
-    ],
-  });
   return {
     type: 'flex', altText: '予約内容の確認',
     contents: {
       type: 'bubble',
-      header: { type: 'box', layout: 'vertical', backgroundColor: '#1a6b5a', contents: [{ type: 'text', text: '📋 予約内容の確認', color: '#fff', weight: 'bold' }] },
-      body: { type: 'box', layout: 'vertical', spacing: 'sm', contents: rows },
+      header: {
+        type: 'box', layout: 'vertical', backgroundColor: '#1a6b5a',
+        contents: [{ type: 'text', text: '📋 予約内容の確認', color: '#fff', weight: 'bold' }],
+      },
+      body: {
+        type: 'box', layout: 'vertical', spacing: 'sm',
+        contents: rows,
+      },
       footer: {
-        type: 'box', layout: 'horizontal', spacing: 'sm',
+        type: 'box', layout: 'vertical', spacing: 'sm',
         contents: [
+          {
+            type: 'box', layout: 'vertical',
+            backgroundColor: '#fff8e1', paddingAll: '10px',
+            cornerRadius: '8px',
+            contents: [
+              { type: 'text', text: '📞 ご予約確定について', weight: 'bold', size: 'xs', color: '#bf6f00', wrap: true },
+              {
+                type: 'text', size: 'xs', color: '#555555', wrap: true, margin: 'sm',
+                text: '整骨院よりご予約内容の確認のお電話が届き次第、ご予約完了となります。\n当日〜翌日の間にご連絡いたします。\nご了承ください。',
+              },
+            ],
+          },
           { type: 'button', style: 'secondary', action: { type: 'postback', label: '修正する', data: 'action=main_menu' } },
           { type: 'button', style: 'primary', color: '#1a6b5a', action: { type: 'postback', label: '予約を確定する', data: 'action=confirm_booking&ok=true' } },
         ],
@@ -483,11 +488,15 @@ function makeBookingComplete(booking, bookingId) {
           makeInfoRow('受付番号', bookingId),
           makeInfoRow('日時（希望）', `${booking.date} ${booking.time}`),
           makeInfoRow('施術', booking.menu.label),
-          { type: 'separator', margin: 'md' },
+        ],
+      },
+      footer: {
+        type: 'box', layout: 'vertical', spacing: 'sm',
+        contents: [
           {
             type: 'box', layout: 'vertical',
             backgroundColor: '#fff8e1', paddingAll: '12px',
-            cornerRadius: '8px', margin: 'md',
+            cornerRadius: '8px',
             contents: [
               { type: 'text', text: '📞 ご予約確定について', weight: 'bold', size: 'sm', color: '#bf6f00', wrap: true },
               {
@@ -496,12 +505,9 @@ function makeBookingComplete(booking, bookingId) {
               },
             ],
           },
-          { type: 'text', text: `📞 ${CLINIC.tel}`, size: 'xs', color: '#1a6b5a', margin: 'sm', align: 'center' },
+          { type: 'text', text: `📞 ${CLINIC.tel}`, size: 'xs', color: '#1a6b5a', align: 'center' },
+          { type: 'button', style: 'secondary', action: { type: 'postback', label: 'メニューに戻る', data: 'action=main_menu', displayText: 'メニューに戻る' } },
         ],
-      },
-      footer: {
-        type: 'box', layout: 'vertical',
-        contents: [{ type: 'button', style: 'secondary', action: { type: 'postback', label: 'メニューに戻る', data: 'action=main_menu', displayText: 'メニューに戻る' } }],
       },
     },
   };
