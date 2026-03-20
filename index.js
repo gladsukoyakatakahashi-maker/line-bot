@@ -28,7 +28,7 @@ const MENUS = [
   { id: 'rehab',    label: 'リハビリ',              time: '40分',     price: '4,950円',               needsDetail: false },
 ];
 
-const SYMPTOMS = ['肩こり', '腰痛', '産後の骨盤矯正', '交通事故の治療', 'リハビリ'];
+const SYMPTOMS = ['首痛', '肩こり', '肩の痛み', '腰痛', '膝痛', '股関節痛', '足首痛', '産後の骨盤矯正', '交通事故の治療', 'トレーニング', 'リハビリ'];
 
 const OPEN_DAYS = [2, 3, 4, 5, 6];
 
@@ -60,13 +60,11 @@ async function handleText(event) {
   const session = getSession(userId);
   const t = text.trim();
 
-  // ─── リセットキーワード ───────────────────────────────
   if (['メニュー','menu','最初','やり直し','ホーム','トップ'].includes(t)) {
     session.step = 'idle';
     return sendMainMenu(replyToken);
   }
 
-  // ─── キーワード反応（セッション待機中でない場合のみ）──────
   if (session.step === 'idle') {
     const lower = t.toLowerCase();
 
@@ -156,10 +154,20 @@ async function handleText(event) {
       session.step = 'await_first_visit';
       return client.replyMessage(replyToken, makeFirstVisitSelect());
 
-    case 'await_symptom':
-      session.booking.symptom = t;
+    case 'await_symptom': {
+      const nums = t.match(/[1-9]|10|11/g);
+      if (nums) {
+        const selected = [...new Set(nums)].map(n => SYMPTOMS[parseInt(n) - 1]).filter(Boolean);
+        session.booking.symptom = selected.join('・');
+      } else {
+        session.booking.symptom = t;
+      }
       session.step = 'await_first_visit';
-      return client.replyMessage(replyToken, makeFirstVisitSelect());
+      return client.replyMessage(replyToken, [
+        { type: 'text', text: `「${session.booking.symptom}」ですね、承りました。` },
+        makeFirstVisitSelect(),
+      ]);
+    }
 
     case 'await_manage_name':
       session.step = 'idle';
@@ -180,6 +188,18 @@ async function handleText(event) {
               {
                 type: 'text', wrap: true, size: 'sm', color: '#444444', margin: 'md',
                 text: 'こちらから内容確認いたしますので、しばらくお待ちください。\n\nご不明な点はお電話でもお気軽にどうぞ。',
+              },
+              {
+                type: 'box', layout: 'vertical',
+                backgroundColor: '#fff8e1', paddingAll: '10px',
+                cornerRadius: '8px', margin: 'md',
+                contents: [
+                  { type: 'text', text: '📞 ご確認のお電話について', weight: 'bold', size: 'xs', color: '#bf6f00', wrap: true },
+                  {
+                    type: 'text', size: 'xs', color: '#555555', wrap: true, margin: 'sm',
+                    text: '整骨院よりご予約内容の確認のお電話が届き次第、ご予約完了となります。\n当日〜翌日の間にご連絡いたします。\nご了承ください。',
+                  },
+                ],
               },
               { type: 'text', text: `📞 ${CLINIC.tel}`, size: 'sm', color: '#1a6b5a', margin: 'sm', align: 'center' },
             ],
@@ -379,20 +399,10 @@ function makeMenuSelect() {
 }
 
 function makeSymptomSelect() {
+  const list = SYMPTOMS.map((s, i) => `${i + 1}. ${s}`).join('\n');
   return {
     type: 'text',
-    text: '気になる症状をお聞かせください。\n以下からお選びいただくか、直接入力してください。\n（例：肩こり、腰痛、産後の骨盤矯正、交通事故の治療、リハビリ）',
-    quickReply: {
-      items: SYMPTOMS.map(s => ({
-        type: 'action',
-        action: {
-          type: 'postback',
-          label: s,
-          data: `action=select_symptom&symptom=${encodeURIComponent(s)}`,
-          displayText: s,
-        },
-      })),
-    },
+    text: `気になる症状をお聞かせください。\n複数ある場合は番号をまとめて送ってください。\n\n${list}\n\n例）「1 3」や「1・3」など\n直接文字で入力もOKです。`,
   };
 }
 
