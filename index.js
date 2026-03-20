@@ -428,6 +428,19 @@ function makeBookingConfirm(booking) {
     makeInfoRow('区分', booking.isFirst ? '初診' : '再診'),
   ];
   if (booking.symptom) rows.push(makeInfoRow('気になる症状', booking.symptom));
+  rows.push({ type: 'separator', margin: 'md' });
+  rows.push({
+    type: 'box', layout: 'vertical',
+    backgroundColor: '#fff8e1', paddingAll: '10px',
+    cornerRadius: '8px', margin: 'md',
+    contents: [
+      { type: 'text', text: '📞 ご予約確定について', weight: 'bold', size: 'xs', color: '#bf6f00', wrap: true },
+      {
+        type: 'text', size: 'xs', color: '#555555', wrap: true, margin: 'sm',
+        text: '整骨院よりご予約内容の確認のお電話が届き次第、ご予約完了となります。\n当日〜翌日の間にご連絡いたします。\nご了承ください。',
+      },
+    ],
+  });
   return {
     type: 'flex', altText: '予約内容の確認',
     contents: {
