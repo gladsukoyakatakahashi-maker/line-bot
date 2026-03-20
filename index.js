@@ -29,9 +29,7 @@ const MENUS = [
 ];
 
 const SYMPTOMS = ['首痛', '肩こり', '肩の痛み', '腰痛', '膝痛', '股関節痛', '足首痛', '産後の骨盤矯正', '交通事故の治療', 'トレーニング', 'リハビリ'];
-
 const OPEN_DAYS = [2, 3, 4, 5, 6];
-
 const SLOTS = {
   weekday:  ['09:30','10:10','10:50','11:30','15:00','15:40','16:20','17:00','17:40','18:20'],
   saturday: ['09:30','10:10','10:50','11:30','15:00','15:40','16:20','17:00'],
@@ -41,6 +39,27 @@ const sessions = {};
 function getSession(userId) {
   if (!sessions[userId]) sessions[userId] = { step: 'idle', booking: {} };
   return sessions[userId];
+}
+
+function encodeBooking(b) {
+  return encodeURIComponent(JSON.stringify({
+    date: b.date || '',
+    time: b.time || '',
+    menuId: b.menu ? b.menu.id : '',
+    name: b.name || '',
+    phone: b.phone || '',
+    symptom: b.symptom || '',
+  }));
+}
+
+function decodeBooking(str) {
+  try {
+    const b = JSON.parse(decodeURIComponent(str));
+    b.menu = MENUS.find(m => m.id === b.menuId) || null;
+    return b;
+  } catch(e) {
+    return null;
+  }
 }
 
 app.post('/webhook', line.middleware(config), (req, res) => {
@@ -68,7 +87,6 @@ async function handleText(event) {
 
   if (session.step === 'idle') {
     const lower = t.toLowerCase();
-
     if (['予約','よやく','予約したい','予約お願い','よやくしたい','reserve','booking'].some(k => lower.includes(k))) {
       session.step = 'select_date';
       session.booking = {};
@@ -77,59 +95,24 @@ async function handleText(event) {
         makeDatePicker(),
       ]);
     }
-
-    if (['料金','メニュー','施術','値段','いくら','price','menu'].some(k => lower.includes(k))) {
+    if (['料金','施術','値段','いくら','price','menu'].some(k => lower.includes(k))) {
       return client.replyMessage(replyToken, makeMenuCarousel());
     }
-
     if (['営業','時間','何時','休み','定休','open','hour'].some(k => lower.includes(k))) {
-      return client.replyMessage(replyToken, {
-        type: 'flex', altText: '営業時間のご案内',
-        contents: {
-          type: 'bubble',
-          header: { type: 'box', layout: 'vertical', backgroundColor: '#1a6b5a', contents: [{ type: 'text', text: '🕐 営業時間', color: '#fff', weight: 'bold' }] },
-          body: {
-            type: 'box', layout: 'vertical', spacing: 'md',
-            contents: [
-              { type: 'text', text: '火〜金曜日', weight: 'bold', size: 'sm' },
-              { type: 'text', text: '午前：9:30〜12:10\n午後：15:00〜19:00', size: 'sm', color: '#444444', wrap: true },
-              { type: 'separator' },
-              { type: 'text', text: '土曜日', weight: 'bold', size: 'sm' },
-              { type: 'text', text: '午前：9:30〜12:10\n午後：15:00〜17:40', size: 'sm', color: '#444444', wrap: true },
-              { type: 'separator' },
-              { type: 'text', text: '休院日：日・月・祝日', size: 'sm', color: '#e53935', wrap: true },
-              { type: 'text', text: `📞 ${CLINIC.tel}`, size: 'sm', color: '#1a6b5a', margin: 'md', align: 'center' },
-            ],
-          },
-          footer: {
-            type: 'box', layout: 'vertical',
-            contents: [{ type: 'button', style: 'primary', color: '#1a6b5a', action: { type: 'postback', label: '予約する', data: 'action=new_booking', displayText: '予約する' } }],
-          },
-        },
-      });
+      return client.replyMessage(replyToken, makeHoursFlex());
     }
-
     if (['電話','tel','phone','連絡'].some(k => lower.includes(k))) {
-      return client.replyMessage(replyToken, {
-        type: 'text',
-        text: `📞 健やか整骨院 豊玉\n\n電話番号：${CLINIC.tel}\n\n営業時間内にお気軽にお電話ください。\n火〜金 9:30〜19:00\n土 9:30〜17:40`,
-      });
+      return client.replyMessage(replyToken, { type: 'text', text: `📞 健やか整骨院 豊玉\n\n電話番号：${CLINIC.tel}\n\n火〜金 9:30〜19:00\n土 9:30〜17:40` });
     }
-
-    if (['場所','アクセス','住所','どこ','地図','map','address'].some(k => lower.includes(k))) {
-      return client.replyMessage(replyToken, {
-        type: 'text',
-        text: '📍 健やか整骨院 豊玉\n\nご来院の際はお電話またはLINEでご予約のうえお越しください。\n\n📞 03-5946-9959',
-      });
+    if (['場所','アクセス','住所','どこ','地図'].some(k => lower.includes(k))) {
+      return client.replyMessage(replyToken, { type: 'text', text: `📍 健やか整骨院 豊玉\n\nご来院の際はご予約のうえお越しください。\n\n📞 ${CLINIC.tel}` });
     }
-
     if (['こんにちは','こんばんは','おはよう','はじめまして','hello','hi','よろしく'].some(k => lower.includes(k))) {
       return client.replyMessage(replyToken, [
-        { type: 'text', text: `こんにちは！\n${CLINIC.name}のLINE予約窓口です😊\n\nご予約やお問い合わせをどうぞ。` },
+        { type: 'text', text: `こんにちは！\n${CLINIC.name}のLINE予約窓口です😊` },
         makeMainMenuFlex(),
       ]);
     }
-
     return client.replyMessage(replyToken, [
       { type: 'text', text: 'ご用件をお選びください。' },
       makeMainMenuFlex(),
@@ -145,14 +128,16 @@ async function handleText(event) {
         text: `${t} 様、ありがとうございます。\nお電話番号を入力してください。\n例）03-5946-0000`,
       });
 
-    case 'await_phone':
+    case 'await_phone': {
       session.booking.phone = t;
       if (session.booking.menu && session.booking.menu.needsDetail) {
         session.step = 'await_symptom';
         return client.replyMessage(replyToken, makeSymptomSelect());
       }
-      session.step = 'await_first_visit';
-      return client.replyMessage(replyToken, makeFirstVisitSelect());
+      session.step = 'idle';
+      const encoded = encodeBooking(session.booking);
+      return client.replyMessage(replyToken, makeFirstVisitSelect(encoded));
+    }
 
     case 'await_symptom': {
       const nums = t.match(/10|11|[1-9]/g);
@@ -162,49 +147,26 @@ async function handleText(event) {
       } else {
         session.booking.symptom = t;
       }
-      session.step = 'await_first_visit';
+      session.step = 'idle';
+      const encoded = encodeBooking(session.booking);
       return client.replyMessage(replyToken, [
         { type: 'text', text: `「${session.booking.symptom}」ですね、承りました。` },
-        makeFirstVisitSelect(),
+        makeFirstVisitSelect(encoded),
       ]);
     }
 
     case 'await_manage_name':
       session.step = 'idle';
       session.booking = {};
-      return client.replyMessage(replyToken, {
-        type: 'flex', altText: 'お問い合わせを受け付けました',
-        contents: {
-          type: 'bubble',
-          header: {
-            type: 'box', layout: 'vertical', backgroundColor: '#2c7a7b',
-            contents: [{ type: 'text', text: '✅ 受け付けました', color: '#fff', weight: 'bold' }],
-          },
-          body: {
-            type: 'box', layout: 'vertical', spacing: 'sm',
-            contents: [
-              { type: 'text', text: `${t} 様`, weight: 'bold', size: 'md' },
-              { type: 'separator', margin: 'md' },
-              { type: 'text', wrap: true, size: 'sm', color: '#444444', margin: 'md', text: 'こちらから内容確認いたしますので、しばらくお待ちください。\n\nご不明な点はお電話でもお気軽にどうぞ。' },
-              {
-                type: 'box', layout: 'vertical', backgroundColor: '#fff8e1', paddingAll: '10px', cornerRadius: '8px', margin: 'md',
-                contents: [
-                  { type: 'text', text: '📞 ご確認のお電話について', weight: 'bold', size: 'xs', color: '#bf6f00', wrap: true },
-                  { type: 'text', size: 'xs', color: '#555555', wrap: true, margin: 'sm', text: '整骨院よりご予約内容の確認のお電話が届き次第、ご予約完了となります。\n当日〜翌日の間にご連絡いたします。\nご了承ください。' },
-                ],
-              },
-              { type: 'text', text: `📞 ${CLINIC.tel}`, size: 'sm', color: '#1a6b5a', margin: 'sm', align: 'center' },
-            ],
-          },
-          footer: {
-            type: 'box', layout: 'vertical',
-            contents: [{ type: 'button', style: 'secondary', action: { type: 'postback', label: 'メニューに戻る', data: 'action=main_menu', displayText: 'メニューに戻る' } }],
-          },
-        },
-      });
+      return client.replyMessage(replyToken, makeManageComplete(t));
 
     default:
-      return sendMainMenu(replyToken);
+      session.step = 'idle';
+      session.booking = {};
+      return client.replyMessage(replyToken, [
+        { type: 'text', text: '最初からやり直してください。' },
+        makeMainMenuFlex(),
+      ]);
   }
 }
 
@@ -246,46 +208,33 @@ async function handlePostback(event) {
       });
     }
 
-    case 'select_symptom':
-      session.booking.symptom = decodeURIComponent(params.get('symptom'));
-      session.step = 'await_first_visit';
-      return client.replyMessage(replyToken, makeFirstVisitSelect());
-
     case 'first_visit': {
-      session.booking.isFirst = params.get('val') === 'true';
-      session.step = 'confirm_booking';
-      const confirmData = {
-        date: session.booking.date,
-        time: session.booking.time,
-        menu: session.booking.menu,
-        name: session.booking.name,
-        phone: session.booking.phone,
-        symptom: session.booking.symptom,
-        isFirst: session.booking.isFirst,
-      };
-      return client.replyMessage(replyToken, makeBookingConfirm(confirmData));
+      const b = decodeBooking(params.get('b'));
+      if (!b || !b.date || !b.time || !b.menu) {
+        return client.replyMessage(replyToken, [
+          { type: 'text', text: '⚠️ データが取得できませんでした。\n最初からやり直してください。' },
+          makeMainMenuFlex(),
+        ]);
+      }
+      b.isFirst = params.get('val') === 'true';
+      return client.replyMessage(replyToken, makeBookingConfirm(b));
     }
 
     case 'confirm_booking': {
       if (params.get('ok') !== 'true') {
-        session.step = 'idle';
-        session.booking = {};
         return sendMainMenu(replyToken);
       }
-      const completedBooking = {
-        date: session.booking.date,
-        time: session.booking.time,
-        menu: session.booking.menu,
-        name: session.booking.name,
-        phone: session.booking.phone,
-        symptom: session.booking.symptom,
-        isFirst: session.booking.isFirst,
-      };
+      const b = decodeBooking(params.get('b'));
+      if (!b || !b.menu) {
+        return client.replyMessage(replyToken, [
+          { type: 'text', text: '⚠️ データが取得できませんでした。\n最初からやり直してください。' },
+          makeMainMenuFlex(),
+        ]);
+      }
+      b.isFirst = params.get('isFirst') === 'true';
       const bookingId = 'BK' + Date.now().toString().slice(-6);
-      console.log('予約保存:', { bookingId, ...completedBooking });
-      session.step = 'idle';
-      session.booking = {};
-      return client.replyMessage(replyToken, makeBookingComplete(completedBooking, bookingId));
+      console.log('予約完了:', bookingId, b.name, b.date, b.time, b.menu.label);
+      return client.replyMessage(replyToken, makeBookingComplete(b, bookingId));
     }
 
     case 'manage_booking':
@@ -355,6 +304,33 @@ function makeMenuButton(label, data, color) {
   return { type: 'button', style: 'primary', color, action: { type: 'postback', label, data, displayText: label } };
 }
 
+function makeHoursFlex() {
+  return {
+    type: 'flex', altText: '営業時間のご案内',
+    contents: {
+      type: 'bubble',
+      header: { type: 'box', layout: 'vertical', backgroundColor: '#1a6b5a', contents: [{ type: 'text', text: '🕐 営業時間', color: '#fff', weight: 'bold' }] },
+      body: {
+        type: 'box', layout: 'vertical', spacing: 'md',
+        contents: [
+          { type: 'text', text: '火〜金曜日', weight: 'bold', size: 'sm' },
+          { type: 'text', text: '午前：9:30〜12:10\n午後：15:00〜19:00', size: 'sm', color: '#444444', wrap: true },
+          { type: 'separator' },
+          { type: 'text', text: '土曜日', weight: 'bold', size: 'sm' },
+          { type: 'text', text: '午前：9:30〜12:10\n午後：15:00〜17:40', size: 'sm', color: '#444444', wrap: true },
+          { type: 'separator' },
+          { type: 'text', text: '休院日：日・月・祝日', size: 'sm', color: '#e53935', wrap: true },
+          { type: 'text', text: `📞 ${CLINIC.tel}`, size: 'sm', color: '#1a6b5a', margin: 'md', align: 'center' },
+        ],
+      },
+      footer: {
+        type: 'box', layout: 'vertical',
+        contents: [{ type: 'button', style: 'primary', color: '#1a6b5a', action: { type: 'postback', label: '予約する', data: 'action=new_booking', displayText: '予約する' } }],
+      },
+    },
+  };
+}
+
 function makeDatePicker() {
   const today = new Date();
   const items = [];
@@ -420,25 +396,36 @@ function makeSymptomSelect() {
   };
 }
 
-function makeFirstVisitSelect() {
+function makeFirstVisitSelect(encodedBooking) {
   return {
     type: 'text', text: '初診・再診をお選びください',
     quickReply: {
       items: [
-        { type: 'action', action: { type: 'postback', label: '初診（初めて）', data: 'action=first_visit&val=true', displayText: '初診です' } },
-        { type: 'action', action: { type: 'postback', label: '再診（通院中）', data: 'action=first_visit&val=false', displayText: '再診です' } },
+        { type: 'action', action: { type: 'postback', label: '初診（初めて）', data: `action=first_visit&val=true&b=${encodedBooking}`, displayText: '初診です' } },
+        { type: 'action', action: { type: 'postback', label: '再診（通院中）', data: `action=first_visit&val=false&b=${encodedBooking}`, displayText: '再診です' } },
       ],
     },
   };
 }
 
+function makeInfoRow(label, value) {
+  return {
+    type: 'box', layout: 'horizontal',
+    contents: [
+      { type: 'text', text: label, size: 'sm', color: '#888888', flex: 3 },
+      { type: 'text', text: String(value || '　'), size: 'sm', flex: 5, wrap: true },
+    ],
+  };
+}
+
 function makeBookingConfirm(b) {
+  const encoded = encodeBooking(b);
   const rows = [
-    makeInfoRow('日時（希望）', `${b.date || ''} ${b.time || ''}`),
-    makeInfoRow('施術', b.menu ? b.menu.label : ''),
-    makeInfoRow('料金', b.menu ? b.menu.price : ''),
-    makeInfoRow('お名前', `${b.name || ''} 様`),
-    makeInfoRow('電話番号', b.phone || ''),
+    makeInfoRow('日時（希望）', `${b.date} ${b.time}`),
+    makeInfoRow('施術', b.menu.label),
+    makeInfoRow('料金', b.menu.price),
+    makeInfoRow('お名前', `${b.name} 様`),
+    makeInfoRow('電話番号', b.phone),
     makeInfoRow('区分', b.isFirst ? '初診' : '再診'),
   ];
   if (b.symptom) rows.push(makeInfoRow('気になる症状', b.symptom));
@@ -459,20 +446,10 @@ function makeBookingConfirm(b) {
         type: 'box', layout: 'horizontal', spacing: 'sm',
         contents: [
           { type: 'button', style: 'secondary', action: { type: 'postback', label: '修正する', data: 'action=main_menu' } },
-          { type: 'button', style: 'primary', color: '#1a6b5a', action: { type: 'postback', label: '確定する', data: 'action=confirm_booking&ok=true' } },
+          { type: 'button', style: 'primary', color: '#1a6b5a', action: { type: 'postback', label: '確定する', data: `action=confirm_booking&ok=true&isFirst=${b.isFirst}&b=${encoded}` } },
         ],
       },
     },
-  };
-}
-
-function makeInfoRow(label, value) {
-  return {
-    type: 'box', layout: 'horizontal',
-    contents: [
-      { type: 'text', text: label, size: 'sm', color: '#888888', flex: 3 },
-      { type: 'text', text: value || '　', size: 'sm', flex: 5, wrap: true },
-    ],
   };
 }
 
@@ -489,9 +466,9 @@ function makeBookingComplete(b, bookingId) {
         type: 'box', layout: 'vertical', spacing: 'sm',
         contents: [
           makeInfoRow('受付番号', bookingId),
-          makeInfoRow('日時（希望）', `${b.date || ''} ${b.time || ''}`),
-          makeInfoRow('施術', b.menu ? b.menu.label : ''),
-          makeInfoRow('お名前', `${b.name || ''} 様`),
+          makeInfoRow('日時（希望）', `${b.date} ${b.time}`),
+          makeInfoRow('施術', b.menu.label),
+          makeInfoRow('お名前', `${b.name} 様`),
           {
             type: 'text', size: 'xs', color: '#bf6f00', wrap: true, margin: 'md',
             text: '📞 整骨院よりご予約内容の確認のお電話が届き次第、ご予約完了となります。当日〜翌日の間にご連絡いたします。ご了承ください。',
@@ -507,6 +484,33 @@ function makeBookingComplete(b, bookingId) {
   };
 }
 
+function makeManageComplete(name) {
+  return {
+    type: 'flex', altText: 'お問い合わせを受け付けました',
+    contents: {
+      type: 'bubble',
+      header: { type: 'box', layout: 'vertical', backgroundColor: '#2c7a7b', contents: [{ type: 'text', text: '✅ 受け付けました', color: '#fff', weight: 'bold' }] },
+      body: {
+        type: 'box', layout: 'vertical', spacing: 'sm',
+        contents: [
+          { type: 'text', text: `${name} 様`, weight: 'bold', size: 'md' },
+          { type: 'separator', margin: 'md' },
+          { type: 'text', wrap: true, size: 'sm', color: '#444444', margin: 'md', text: 'こちらから内容確認いたしますので、しばらくお待ちください。\n\nご不明な点はお電話でもお気軽にどうぞ。' },
+          {
+            type: 'box', layout: 'vertical', backgroundColor: '#fff8e1', paddingAll: '10px', cornerRadius: '8px', margin: 'md',
+            contents: [
+              { type: 'text', text: '📞 ご確認のお電話について', weight: 'bold', size: 'xs', color: '#bf6f00', wrap: true },
+              { type: 'text', size: 'xs', color: '#555555', wrap: true, margin: 'sm', text: '整骨院よりご予約内容の確認のお電話が届き次第、ご予約完了となります。\n当日〜翌日の間にご連絡いたします。\nご了承ください。' },
+            ],
+          },
+          { type: 'text', text: `📞 ${CLINIC.tel}`, size: 'sm', color: '#1a6b5a', margin: 'sm', align: 'center' },
+        ],
+      },
+      footer: { type: 'box', layout: 'vertical', contents: [{ type: 'button', style: 'secondary', action: { type: 'postback', label: 'メニューに戻る', data: 'action=main_menu', displayText: 'メニューに戻る' } }] },
+    },
+  };
+}
+
 function makeMenuCarousel() {
   return {
     type: 'flex', altText: '施術メニュー一覧',
@@ -515,17 +519,8 @@ function makeMenuCarousel() {
       contents: MENUS.map(m => ({
         type: 'bubble',
         header: { type: 'box', layout: 'vertical', backgroundColor: '#1a6b5a', contents: [{ type: 'text', text: m.label, color: '#fff', weight: 'bold', size: 'md', wrap: true }] },
-        body: {
-          type: 'box', layout: 'vertical', spacing: 'sm',
-          contents: [
-            makeInfoRow('⏱ 時間', m.time),
-            makeInfoRow('💴 料金', m.price),
-          ],
-        },
-        footer: {
-          type: 'box', layout: 'vertical', spacing: 'sm',
-          contents: [{ type: 'button', style: 'primary', color: '#1a6b5a', action: { type: 'postback', label: 'このメニューで予約', data: 'action=new_booking', displayText: '新規予約を開始' } }],
-        },
+        body: { type: 'box', layout: 'vertical', spacing: 'sm', contents: [makeInfoRow('⏱ 時間', m.time), makeInfoRow('💴 料金', m.price)] },
+        footer: { type: 'box', layout: 'vertical', spacing: 'sm', contents: [{ type: 'button', style: 'primary', color: '#1a6b5a', action: { type: 'postback', label: 'このメニューで予約', data: 'action=new_booking', displayText: '新規予約を開始' } }] },
       })),
     },
   };
@@ -566,6 +561,12 @@ function makeMenuDetail(m) {
     },
   };
 }
+
+const https = require('https');
+setInterval(() => {
+  https.get('https://line-bot-w6z3.onrender.com/ping', () => {}).on('error', () => {});
+}, 10 * 60 * 1000);
+app.get('/ping', (req, res) => res.send('ok'));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`${CLINIC.name} LINE Bot listening on port ${PORT}`));
