@@ -18,19 +18,7 @@ const CLINIC = {
   closed: '日・月・祝日',
 };
 
-const MENUS = [
-  { id: 'shinkan',  label: '新患施術',              time: '60〜90分', price: '初回カウンセリング込み', needsDetail: true },
-  { id: 'ippan',    label: '一般施術',              time: '40分',     price: '施術内容により異なる',   needsDetail: true },
-  { id: 'personal', label: 'パーソナルトレーニング', time: '40分',    price: '4,950円',               needsDetail: false },
-  { id: 'rehab',    label: 'リハビリ',              time: '40分',     price: '4,950円',               needsDetail: false },
-];
-
 const SYMPTOMS = ['首痛', '肩こり', '肩の痛み', '腰痛', '膝痛', '股関節痛', '足首痛', '産後の骨盤矯正', '交通事故の治療', 'トレーニング', 'リハビリ'];
-const OPEN_DAYS = [2, 3, 4, 5, 6];
-const SLOTS = {
-  weekday:  ['09:30','10:10','10:50','11:30','15:00','15:40','16:20','17:00','17:40','18:20'],
-  saturday: ['09:30','10:10','10:50','11:30','15:00','15:40','16:20','17:00'],
-};
 
 const sessions = {};
 function getSession(userId) {
@@ -64,15 +52,15 @@ async function handleText(event) {
   if (session.step === 'idle') {
     const lower = t.toLowerCase();
     if (['予約','よやく','予約したい','予約お願い'].some(k => lower.includes(k))) {
-      session.step = 'select_date';
+      session.step = 'await_datetime';
       session.booking = {};
-      return client.replyMessage(replyToken, [
-        { type: 'text', text: 'ご予約ですね！\n以下から日程をお選びください。' },
-        makeDatePicker(),
-      ]);
+      return client.replyMessage(replyToken, {
+        type: 'text',
+        text: 'ご予約ですね！\nご希望の日時を入力してください。\n\n例）3月25日 10時\n　　来週火曜 午後3時\n\n※営業日：火〜金・土\n※定休日：日・月・祝日',
+      });
     }
     if (['料金','施術','値段','いくら'].some(k => lower.includes(k))) {
-      return client.replyMessage(replyToken, makeMenuCarousel());
+      return client.replyMessage(replyToken, makeMenuInfoFlex());
     }
     if (['営業','時間','何時','休み','定休'].some(k => lower.includes(k))) {
       return client.replyMessage(replyToken, makeHoursFlex());
@@ -93,6 +81,14 @@ async function handleText(event) {
   }
 
   switch (session.step) {
+    case 'await_datetime':
+      session.booking.datetime = t;
+      session.step = 'await_name';
+      return client.replyMessage(replyToken, {
+        type: 'text',
+        text: `「${t}」ですね、承りました。\n\nお名前をフルネームで入力してください。\n例）山田 太郎`,
+      });
+
     case 'await_name':
       session.booking.name = t;
       session.step = 'await_phone';
@@ -103,12 +99,8 @@ async function handleText(event) {
 
     case 'await_phone':
       session.booking.phone = t;
-      if (session.booking.menu && session.booking.menu.needsDetail) {
-        session.step = 'await_symptom';
-        return client.replyMessage(replyToken, makeSymptomSelect());
-      }
-      session.step = 'await_first_visit';
-      return client.replyMessage(replyToken, makeFirstVisitMsg());
+      session.step = 'await_symptom';
+      return client.replyMessage(replyToken, makeSymptomSelect());
 
     case 'await_symptom': {
       const nums = t.match(/10|11|[1-9]/g);
@@ -137,8 +129,10 @@ async function handleText(event) {
           makeFirstVisitMsg(),
         ]);
       }
-      session.step = 'confirm_booking';
-      return client.replyMessage(replyToken, makeBookingConfirm(session.booking));
+      const b = { ...session.booking };
+      session.step = 'idle';
+      session.booking = {};
+      return client.replyMessage(replyToken, makeBookingComplete(b));
     }
 
     case 'await_manage_name':
@@ -150,7 +144,7 @@ async function handleText(event) {
       session.step = 'idle';
       session.booking = {};
       return client.replyMessage(replyToken, [
-        { type: 'text', text: 'セッションがリセットされました。\n最初からやり直してください。' },
+        { type: 'text', text: '最初からやり直してください。' },
         makeMainMenuFlex(),
       ]);
   }
@@ -169,49 +163,12 @@ async function handlePostback(event) {
       return sendMainMenu(replyToken);
 
     case 'new_booking':
-      session.step = 'select_date';
+      session.step = 'await_datetime';
       session.booking = {};
-      return client.replyMessage(replyToken, makeDatePicker());
-
-    case 'select_date':
-      session.booking.date = params.get('date');
-      session.booking.dayOfWeek = parseInt(params.get('dow'));
-      session.step = 'select_time';
-      return client.replyMessage(replyToken, makeTimePicker(session.booking.date, session.booking.dayOfWeek));
-
-    case 'select_time':
-      session.booking.time = params.get('time');
-      session.step = 'select_menu';
-      return client.replyMessage(replyToken, makeMenuSelect());
-
-    case 'select_menu': {
-      const menuId = params.get('menu');
-      session.booking.menu = MENUS.find(m => m.id === menuId);
-      session.step = 'await_name';
       return client.replyMessage(replyToken, {
         type: 'text',
-        text: `「${session.booking.menu.label}」を選択しました。\n\nお名前をフルネームで入力してください。\n例）山田 太郎`,
+        text: 'ご予約ですね！\nご希望の日時を入力してください。\n\n例）3月25日 10時\n　　来週火曜 午後3時\n\n※営業日：火〜金・土\n※定休日：日・月・祝日',
       });
-    }
-
-    case 'first_visit':
-      session.booking.isFirst = params.get('val') === 'true';
-      session.step = 'confirm_booking';
-      return client.replyMessage(replyToken, makeBookingConfirm(session.booking));
-
-    case 'confirm_booking': {
-      if (params.get('ok') !== 'true') {
-        session.step = 'idle';
-        session.booking = {};
-        return sendMainMenu(replyToken);
-      }
-      const b = { ...session.booking };
-      const bookingId = 'BK' + Date.now().toString().slice(-6);
-      console.log('予約完了:', bookingId, b.name, b.date, b.time, b.menu && b.menu.label);
-      session.step = 'idle';
-      session.booking = {};
-      return client.replyMessage(replyToken, makeBookingComplete(b, bookingId));
-    }
 
     case 'manage_booking':
       session.step = 'await_manage_name';
@@ -221,12 +178,7 @@ async function handlePostback(event) {
       });
 
     case 'show_menus':
-      return client.replyMessage(replyToken, makeMenuCarousel());
-
-    case 'menu_detail': {
-      const m = MENUS.find(x => x.id === params.get('menu'));
-      return client.replyMessage(replyToken, makeMenuDetail(m));
-    }
+      return client.replyMessage(replyToken, makeMenuInfoFlex());
 
     default:
       return sendMainMenu(replyToken);
@@ -307,58 +259,35 @@ function makeHoursFlex() {
   };
 }
 
-function makeDatePicker() {
-  const today = new Date();
-  const items = [];
-  const dayNames = ['日','月','火','水','木','金','土'];
-  for (let i = 1; i <= 14 && items.length < 10; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
-    const dow = d.getDay();
-    if (!OPEN_DAYS.includes(dow)) continue;
-    const m = d.getMonth() + 1, day = d.getDate();
-    items.push({
-      type: 'action',
-      action: {
-        type: 'postback',
-        label: `${m}/${day}(${dayNames[dow]})`,
-        data: `action=select_date&date=${d.toISOString().slice(0,10)}&dow=${dow}`,
-        displayText: `${m}/${day}(${dayNames[dow]})を希望`,
-      },
-    });
-  }
-  return { type: 'text', text: '📅 ご希望の日付をお選びください\n※日・月・祝日は休院です', quickReply: { items } };
-}
-
-function makeTimePicker(date, dow) {
-  const slots = dow === 6 ? SLOTS.saturday : SLOTS.weekday;
+function makeMenuInfoFlex() {
+  const menus = [
+    { label: '新患施術', time: '60〜90分', price: '初回カウンセリング込み' },
+    { label: '一般施術', time: '40分', price: '施術内容により異なる' },
+    { label: 'パーソナルトレーニング', time: '40分', price: '4,950円' },
+    { label: 'リハビリ', time: '40分', price: '4,950円' },
+  ];
   return {
-    type: 'text',
-    text: `${date} のご希望時間をお選びください`,
-    quickReply: {
-      items: slots.map(t => ({
-        type: 'action',
-        action: { type: 'postback', label: t, data: `action=select_time&time=${t}`, displayText: `${t}を希望` },
-      })),
-    },
-  };
-}
-
-function makeMenuSelect() {
-  return {
-    type: 'flex', altText: '施術メニューを選択してください',
+    type: 'flex', altText: '施術メニュー・料金案内',
     contents: {
       type: 'bubble',
+      header: { type: 'box', layout: 'vertical', backgroundColor: '#5c6bc0', contents: [{ type: 'text', text: '💴 施術メニュー・料金', color: '#fff', weight: 'bold' }] },
       body: {
-        type: 'box', layout: 'vertical', spacing: 'sm',
-        contents: [
-          { type: 'text', text: '施術メニューを選択', weight: 'bold', size: 'lg', margin: 'none' },
-          { type: 'separator', margin: 'md' },
-          ...MENUS.map(m => ({
-            type: 'button', style: 'secondary', margin: 'sm',
-            action: { type: 'postback', label: `${m.label}（${m.time}）`, data: `action=select_menu&menu=${m.id}` },
-          })),
-        ],
+        type: 'box', layout: 'vertical', spacing: 'md',
+        contents: menus.map(m => ({
+          type: 'box', layout: 'vertical', spacing: 'xs',
+          contents: [
+            { type: 'text', text: m.label, weight: 'bold', size: 'sm' },
+            { type: 'box', layout: 'horizontal', contents: [
+              { type: 'text', text: `⏱ ${m.time}`, size: 'xs', color: '#888888', flex: 1 },
+              { type: 'text', text: `💴 ${m.price}`, size: 'xs', color: '#888888', flex: 2 },
+            ]},
+            { type: 'separator', margin: 'sm' },
+          ],
+        })),
+      },
+      footer: {
+        type: 'box', layout: 'vertical',
+        contents: [{ type: 'button', style: 'primary', color: '#1a6b5a', action: { type: 'postback', label: '予約する', data: 'action=new_booking', displayText: '予約する' } }],
       },
     },
   };
@@ -389,41 +318,9 @@ function makeInfoRow(label, value) {
   };
 }
 
-function makeBookingConfirm(b) {
-  const rows = [
-    makeInfoRow('日時（希望）', `${b.date} ${b.time}`),
-    makeInfoRow('施術', b.menu ? b.menu.label : ''),
-    makeInfoRow('料金', b.menu ? b.menu.price : ''),
-    makeInfoRow('お名前', `${b.name} 様`),
-    makeInfoRow('電話番号', b.phone),
-    makeInfoRow('区分', b.isFirst ? '初診' : '再診'),
-  ];
-  if (b.symptom) rows.push(makeInfoRow('気になる症状', b.symptom));
-  rows.push({
-    type: 'text', size: 'xs', color: '#bf6f00', wrap: true, margin: 'md',
-    text: '📞 整骨院よりご予約内容の確認のお電話が届き次第、ご予約完了となります。当日〜翌日の間にご連絡いたします。ご了承ください。',
-  });
-  return {
-    type: 'flex', altText: '予約内容の確認',
-    contents: {
-      type: 'bubble',
-      header: {
-        type: 'box', layout: 'vertical', backgroundColor: '#1a6b5a',
-        contents: [{ type: 'text', text: '📋 予約内容の確認', color: '#fff', weight: 'bold' }],
-      },
-      body: { type: 'box', layout: 'vertical', spacing: 'sm', contents: rows },
-      footer: {
-        type: 'box', layout: 'horizontal', spacing: 'sm',
-        contents: [
-          { type: 'button', style: 'secondary', action: { type: 'postback', label: '修正する', data: 'action=main_menu' } },
-          { type: 'button', style: 'primary', color: '#1a6b5a', action: { type: 'postback', label: '確定する', data: 'action=confirm_booking&ok=true' } },
-        ],
-      },
-    },
-  };
-}
-
-function makeBookingComplete(b, bookingId) {
+function makeBookingComplete(b) {
+  const bookingId = 'BK' + Date.now().toString().slice(-6);
+  console.log('予約受付:', bookingId, b.name, b.datetime);
   return {
     type: 'flex', altText: '予約受付が完了しました',
     contents: {
@@ -436,9 +333,11 @@ function makeBookingComplete(b, bookingId) {
         type: 'box', layout: 'vertical', spacing: 'sm',
         contents: [
           makeInfoRow('受付番号', bookingId),
-          makeInfoRow('日時（希望）', `${b.date} ${b.time}`),
-          makeInfoRow('施術', b.menu ? b.menu.label : ''),
+          makeInfoRow('希望日時', b.datetime),
           makeInfoRow('お名前', `${b.name} 様`),
+          makeInfoRow('電話番号', b.phone),
+          makeInfoRow('気になる症状', b.symptom || ''),
+          makeInfoRow('区分', b.isFirst ? '初診' : '再診'),
           {
             type: 'text', size: 'xs', color: '#bf6f00', wrap: true, margin: 'md',
             text: '📞 整骨院よりご予約内容の確認のお電話が届き次第、ご予約完了となります。当日〜翌日の間にご連絡いたします。ご了承ください。',
@@ -477,54 +376,6 @@ function makeManageComplete(name) {
         ],
       },
       footer: { type: 'box', layout: 'vertical', contents: [{ type: 'button', style: 'secondary', action: { type: 'postback', label: 'メニューに戻る', data: 'action=main_menu', displayText: 'メニューに戻る' } }] },
-    },
-  };
-}
-
-function makeMenuCarousel() {
-  return {
-    type: 'flex', altText: '施術メニュー一覧',
-    contents: {
-      type: 'carousel',
-      contents: MENUS.map(m => ({
-        type: 'bubble',
-        header: { type: 'box', layout: 'vertical', backgroundColor: '#1a6b5a', contents: [{ type: 'text', text: m.label, color: '#fff', weight: 'bold', size: 'md', wrap: true }] },
-        body: { type: 'box', layout: 'vertical', spacing: 'sm', contents: [makeInfoRow('⏱ 時間', m.time), makeInfoRow('💴 料金', m.price)] },
-        footer: { type: 'box', layout: 'vertical', spacing: 'sm', contents: [{ type: 'button', style: 'primary', color: '#1a6b5a', action: { type: 'postback', label: 'このメニューで予約', data: 'action=new_booking', displayText: '新規予約を開始' } }] },
-      })),
-    },
-  };
-}
-
-const MENU_DESCRIPTIONS = {
-  shinkan:  '初めてご来院の方向けです。問診・検査・施術を含む丁寧なカウンセリングを行います（60〜90分）。',
-  ippan:    '通院中の方向けの施術です。ご予約時に気になる症状をお知らせください。',
-  personal: 'お身体の状態に合わせたオーダーメイドのトレーニング指導を行います。',
-  rehab:    'ケガや術後の回復をサポートする運動療法・リハビリプログラムです。',
-};
-
-function makeMenuDetail(m) {
-  return {
-    type: 'flex', altText: m.label,
-    contents: {
-      type: 'bubble',
-      header: { type: 'box', layout: 'vertical', backgroundColor: '#1a6b5a', contents: [{ type: 'text', text: m.label, color: '#fff', weight: 'bold' }] },
-      body: {
-        type: 'box', layout: 'vertical', spacing: 'md',
-        contents: [
-          { type: 'text', text: MENU_DESCRIPTIONS[m.id], wrap: true, size: 'sm' },
-          { type: 'separator' },
-          makeInfoRow('⏱ 時間', m.time),
-          makeInfoRow('💴 料金', m.price),
-        ],
-      },
-      footer: {
-        type: 'box', layout: 'vertical', spacing: 'sm',
-        contents: [
-          { type: 'button', style: 'secondary', action: { type: 'postback', label: '← メニュー一覧', data: 'action=show_menus' } },
-          { type: 'button', style: 'primary', color: '#1a6b5a', action: { type: 'postback', label: 'このメニューで予約', data: 'action=new_booking', displayText: '新規予約を開始' } },
-        ],
-      },
     },
   };
 }
