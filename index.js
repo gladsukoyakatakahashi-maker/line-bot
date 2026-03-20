@@ -84,8 +84,7 @@ async function handleText(event) {
 
     if (['営業','時間','何時','休み','定休','open','hour'].some(k => lower.includes(k))) {
       return client.replyMessage(replyToken, {
-        type: 'flex',
-        altText: '営業時間のご案内',
+        type: 'flex', altText: '営業時間のご案内',
         contents: {
           type: 'bubble',
           header: { type: 'box', layout: 'vertical', backgroundColor: '#1a6b5a', contents: [{ type: 'text', text: '🕐 営業時間', color: '#fff', weight: 'bold' }] },
@@ -156,7 +155,7 @@ async function handleText(event) {
       return client.replyMessage(replyToken, makeFirstVisitSelect());
 
     case 'await_symptom': {
-      const nums = t.match(/[1-9]|10|11/g);
+      const nums = t.match(/10|11|[1-9]/g);
       if (nums) {
         const selected = [...new Set(nums)].map(n => SYMPTOMS[parseInt(n) - 1]).filter(Boolean);
         session.booking.symptom = selected.join('・');
@@ -174,8 +173,7 @@ async function handleText(event) {
       session.step = 'idle';
       session.booking = {};
       return client.replyMessage(replyToken, {
-        type: 'flex',
-        altText: 'お問い合わせを受け付けました',
+        type: 'flex', altText: 'お問い合わせを受け付けました',
         contents: {
           type: 'bubble',
           header: {
@@ -187,20 +185,12 @@ async function handleText(event) {
             contents: [
               { type: 'text', text: `${t} 様`, weight: 'bold', size: 'md' },
               { type: 'separator', margin: 'md' },
+              { type: 'text', wrap: true, size: 'sm', color: '#444444', margin: 'md', text: 'こちらから内容確認いたしますので、しばらくお待ちください。\n\nご不明な点はお電話でもお気軽にどうぞ。' },
               {
-                type: 'text', wrap: true, size: 'sm', color: '#444444', margin: 'md',
-                text: 'こちらから内容確認いたしますので、しばらくお待ちください。\n\nご不明な点はお電話でもお気軽にどうぞ。',
-              },
-              {
-                type: 'box', layout: 'vertical',
-                backgroundColor: '#fff8e1', paddingAll: '10px',
-                cornerRadius: '8px', margin: 'md',
+                type: 'box', layout: 'vertical', backgroundColor: '#fff8e1', paddingAll: '10px', cornerRadius: '8px', margin: 'md',
                 contents: [
                   { type: 'text', text: '📞 ご確認のお電話について', weight: 'bold', size: 'xs', color: '#bf6f00', wrap: true },
-                  {
-                    type: 'text', size: 'xs', color: '#555555', wrap: true, margin: 'sm',
-                    text: '整骨院よりご予約内容の確認のお電話が届き次第、ご予約完了となります。\n当日〜翌日の間にご連絡いたします。\nご了承ください。',
-                  },
+                  { type: 'text', size: 'xs', color: '#555555', wrap: true, margin: 'sm', text: '整骨院よりご予約内容の確認のお電話が届き次第、ご予約完了となります。\n当日〜翌日の間にご連絡いたします。\nご了承ください。' },
                 ],
               },
               { type: 'text', text: `📞 ${CLINIC.tel}`, size: 'sm', color: '#1a6b5a', margin: 'sm', align: 'center' },
@@ -261,10 +251,20 @@ async function handlePostback(event) {
       session.step = 'await_first_visit';
       return client.replyMessage(replyToken, makeFirstVisitSelect());
 
-    case 'first_visit':
+    case 'first_visit': {
       session.booking.isFirst = params.get('val') === 'true';
       session.step = 'confirm_booking';
-      return client.replyMessage(replyToken, makeBookingConfirm(session.booking));
+      const confirmData = {
+        date: session.booking.date,
+        time: session.booking.time,
+        menu: session.booking.menu,
+        name: session.booking.name,
+        phone: session.booking.phone,
+        symptom: session.booking.symptom,
+        isFirst: session.booking.isFirst,
+      };
+      return client.replyMessage(replyToken, makeBookingConfirm(confirmData));
+    }
 
     case 'confirm_booking': {
       if (params.get('ok') !== 'true') {
@@ -272,10 +272,20 @@ async function handlePostback(event) {
         session.booking = {};
         return sendMainMenu(replyToken);
       }
-      const bookingId = saveBooking(session);
+      const completedBooking = {
+        date: session.booking.date,
+        time: session.booking.time,
+        menu: session.booking.menu,
+        name: session.booking.name,
+        phone: session.booking.phone,
+        symptom: session.booking.symptom,
+        isFirst: session.booking.isFirst,
+      };
+      const bookingId = 'BK' + Date.now().toString().slice(-6);
+      console.log('予約保存:', { bookingId, ...completedBooking });
       session.step = 'idle';
       session.booking = {};
-      return client.replyMessage(replyToken, makeBookingComplete(session.booking, bookingId));
+      return client.replyMessage(replyToken, makeBookingComplete(completedBooking, bookingId));
     }
 
     case 'manage_booking':
@@ -311,8 +321,7 @@ function sendMainMenu(replyToken) {
 
 function makeMainMenuFlex() {
   return {
-    type: 'flex',
-    altText: 'メインメニュー',
+    type: 'flex', altText: 'メインメニュー',
     contents: {
       type: 'bubble',
       hero: {
@@ -423,17 +432,17 @@ function makeFirstVisitSelect() {
   };
 }
 
-function makeBookingConfirm(booking) {
-  const bodyContents = [
-    makeInfoRow('日時（希望）', `${booking.date} ${booking.time}`),
-    makeInfoRow('施術', booking.menu.label),
-    makeInfoRow('料金', booking.menu.price),
-    makeInfoRow('お名前', `${booking.name} 様`),
-    makeInfoRow('電話番号', booking.phone),
-    makeInfoRow('区分', booking.isFirst ? '初診' : '再診'),
+function makeBookingConfirm(b) {
+  const rows = [
+    makeInfoRow('日時（希望）', `${b.date || ''} ${b.time || ''}`),
+    makeInfoRow('施術', b.menu ? b.menu.label : ''),
+    makeInfoRow('料金', b.menu ? b.menu.price : ''),
+    makeInfoRow('お名前', `${b.name || ''} 様`),
+    makeInfoRow('電話番号', b.phone || ''),
+    makeInfoRow('区分', b.isFirst ? '初診' : '再診'),
   ];
-  if (booking.symptom) bodyContents.push(makeInfoRow('気になる症状', booking.symptom));
-  bodyContents.push({
+  if (b.symptom) rows.push(makeInfoRow('気になる症状', b.symptom));
+  rows.push({
     type: 'text', size: 'xs', color: '#bf6f00', wrap: true, margin: 'md',
     text: '📞 整骨院よりご予約内容の確認のお電話が届き次第、ご予約完了となります。当日〜翌日の間にご連絡いたします。ご了承ください。',
   });
@@ -445,10 +454,7 @@ function makeBookingConfirm(booking) {
         type: 'box', layout: 'vertical', backgroundColor: '#1a6b5a',
         contents: [{ type: 'text', text: '📋 予約内容の確認', color: '#fff', weight: 'bold' }],
       },
-      body: {
-        type: 'box', layout: 'vertical', spacing: 'sm',
-        contents: bodyContents,
-      },
+      body: { type: 'box', layout: 'vertical', spacing: 'sm', contents: rows },
       footer: {
         type: 'box', layout: 'horizontal', spacing: 'sm',
         contents: [
@@ -465,12 +471,12 @@ function makeInfoRow(label, value) {
     type: 'box', layout: 'horizontal',
     contents: [
       { type: 'text', text: label, size: 'sm', color: '#888888', flex: 3 },
-      { type: 'text', text: value || '', size: 'sm', flex: 5, wrap: true },
+      { type: 'text', text: value || '　', size: 'sm', flex: 5, wrap: true },
     ],
   };
 }
 
-function makeBookingComplete(booking, bookingId) {
+function makeBookingComplete(b, bookingId) {
   return {
     type: 'flex', altText: '予約受付が完了しました',
     contents: {
@@ -483,8 +489,9 @@ function makeBookingComplete(booking, bookingId) {
         type: 'box', layout: 'vertical', spacing: 'sm',
         contents: [
           makeInfoRow('受付番号', bookingId),
-          makeInfoRow('日時（希望）', `${booking.date} ${booking.time}`),
-          makeInfoRow('施術', booking.menu.label),
+          makeInfoRow('日時（希望）', `${b.date || ''} ${b.time || ''}`),
+          makeInfoRow('施術', b.menu ? b.menu.label : ''),
+          makeInfoRow('お名前', `${b.name || ''} 様`),
           {
             type: 'text', size: 'xs', color: '#bf6f00', wrap: true, margin: 'md',
             text: '📞 整骨院よりご予約内容の確認のお電話が届き次第、ご予約完了となります。当日〜翌日の間にご連絡いたします。ご了承ください。',
@@ -558,12 +565,6 @@ function makeMenuDetail(m) {
       },
     },
   };
-}
-
-function saveBooking(session) {
-  const id = 'BK' + Date.now().toString().slice(-6);
-  console.log('予約保存:', { id, ...session.booking });
-  return id;
 }
 
 const PORT = process.env.PORT || 3000;
