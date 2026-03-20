@@ -21,9 +21,6 @@ const CLINIC = {
 const MENUS = [
   { id: 'shinkan',  label: '新患施術',              time: '60〜90分', price: '初回カウンセリング込み', needsDetail: true },
   { id: 'ippan',    label: '一般施術',              time: '40分',     price: '施術内容により異なる',   needsDetail: true },
-  { id: 'kotsuban', label: '骨盤矯正',              time: '40分',     price: '3,300円',               needsDetail: false },
-  { id: 'nekoze',   label: '猫背矯正',              time: '40分',     price: '2,750円',               needsDetail: false },
-  { id: 'stretch',  label: '下肢ストレッチ',        time: '40分',     price: '2,750円',               needsDetail: false },
   { id: 'personal', label: 'パーソナルトレーニング', time: '40分',    price: '4,950円',               needsDetail: false },
   { id: 'rehab',    label: 'リハビリ',              time: '40分',     price: '4,950円',               needsDetail: false },
 ];
@@ -502,8 +499,37 @@ function makeMenuCarousel() {
 const MENU_DESCRIPTIONS = {
   shinkan:  '初めてご来院の方向けです。問診・検査・施術を含む丁寧なカウンセリングを行います（60〜90分）。',
   ippan:    '通院中の方向けの施術です。ご予約時に気になる症状をお知らせください。',
-  kotsuban: '骨盤のゆがみを整え、腰痛・産後の不調・姿勢改善に効果的です。',
-  nekoze:   '背骨・肩甲骨まわりを整え、猫背・肩こり・首こりの改善を目指します。',
-  stretch:  '下肢の筋肉・関節をほぐし、股関節・膝・足首の可動域を広げます。',
   personal: 'お身体の状態に合わせたオーダーメイドのトレーニング指導を行います。',
-  rehab:    'ケガや術後の回復をサポートする運動療法・
+  rehab:    'ケガや術後の回復をサポートする運動療法・リハビリプログラムです。',
+};
+
+function makeMenuDetail(m) {
+  return {
+    type: 'flex', altText: m.label,
+    contents: {
+      type: 'bubble',
+      header: { type: 'box', layout: 'vertical', backgroundColor: '#1a6b5a', contents: [{ type: 'text', text: m.label, color: '#fff', weight: 'bold' }] },
+      body: {
+        type: 'box', layout: 'vertical', spacing: 'md',
+        contents: [
+          { type: 'text', text: MENU_DESCRIPTIONS[m.id], wrap: true, size: 'sm' },
+          { type: 'separator' },
+          makeInfoRow('⏱ 時間', m.time),
+          makeInfoRow('💴 料金', m.price),
+        ],
+      },
+      footer: {
+        type: 'box', layout: 'vertical', spacing: 'sm',
+        contents: [
+          { type: 'button', style: 'secondary', action: { type: 'postback', label: '← メニュー一覧', data: 'action=show_menus' } },
+          { type: 'button', style: 'primary', color: '#1a6b5a', action: { type: 'postback', label: 'このメニューで予約', data: 'action=new_booking', displayText: '新規予約を開始' } },
+        ],
+      },
+    },
+  };
+}
+
+app.get('/ping', (req, res) => res.send('ok'));
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`${CLINIC.name} LINE Bot listening on port ${PORT}`));
