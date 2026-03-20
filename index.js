@@ -39,7 +39,7 @@ const SLOTS = {
 
 const sessions = {};
 function getSession(userId) {
-  if (!sessions[userId]) sessions[userId] = { step: 'idle' };
+  if (!sessions[userId]) sessions[userId] = { step: 'idle', booking: {} };
   return sessions[userId];
 }
 
@@ -62,6 +62,7 @@ async function handleText(event) {
 
   if (['メニュー','menu','最初','やり直し','ホーム','トップ'].includes(t)) {
     session.step = 'idle';
+    session.booking = {};
     return sendMainMenu(replyToken);
   }
 
@@ -138,7 +139,7 @@ async function handleText(event) {
 
   switch (session.step) {
     case 'await_name':
-      session.name = t;
+      session.booking.name = t;
       session.step = 'await_phone';
       return client.replyMessage(replyToken, {
         type: 'text',
@@ -146,7 +147,7 @@ async function handleText(event) {
       });
 
     case 'await_phone':
-      session.phone = t;
+      session.booking.phone = t;
       if (session.booking.menu && session.booking.menu.needsDetail) {
         session.step = 'await_symptom';
         return client.replyMessage(replyToken, makeSymptomSelect());
@@ -171,6 +172,7 @@ async function handleText(event) {
 
     case 'await_manage_name':
       session.step = 'idle';
+      session.booking = {};
       return client.replyMessage(replyToken, {
         type: 'flex',
         altText: 'お問い合わせを受け付けました',
@@ -225,6 +227,7 @@ async function handlePostback(event) {
   switch (action) {
     case 'main_menu':
       session.step = 'idle';
+      session.booking = {};
       return sendMainMenu(replyToken);
 
     case 'new_booking':
@@ -266,10 +269,12 @@ async function handlePostback(event) {
     case 'confirm_booking': {
       if (params.get('ok') !== 'true') {
         session.step = 'idle';
+        session.booking = {};
         return sendMainMenu(replyToken);
       }
       const bookingId = saveBooking(session);
       session.step = 'idle';
+      session.booking = {};
       return client.replyMessage(replyToken, makeBookingComplete(session.booking, bookingId));
     }
 
@@ -419,7 +424,7 @@ function makeFirstVisitSelect() {
 }
 
 function makeBookingConfirm(booking) {
-  const rows = [
+  const bodyContents = [
     makeInfoRow('日時（希望）', `${booking.date} ${booking.time}`),
     makeInfoRow('施術', booking.menu.label),
     makeInfoRow('料金', booking.menu.price),
@@ -427,7 +432,11 @@ function makeBookingConfirm(booking) {
     makeInfoRow('電話番号', booking.phone),
     makeInfoRow('区分', booking.isFirst ? '初診' : '再診'),
   ];
-  if (booking.symptom) rows.push(makeInfoRow('気になる症状', booking.symptom));
+  if (booking.symptom) bodyContents.push(makeInfoRow('気になる症状', booking.symptom));
+  bodyContents.push({
+    type: 'text', size: 'xs', color: '#bf6f00', wrap: true, margin: 'md',
+    text: '📞 整骨院よりご予約内容の確認のお電話が届き次第、ご予約完了となります。当日〜翌日の間にご連絡いたします。ご了承ください。',
+  });
   return {
     type: 'flex', altText: '予約内容の確認',
     contents: {
@@ -438,25 +447,13 @@ function makeBookingConfirm(booking) {
       },
       body: {
         type: 'box', layout: 'vertical', spacing: 'sm',
-        contents: rows,
+        contents: bodyContents,
       },
       footer: {
-        type: 'box', layout: 'vertical', spacing: 'sm',
+        type: 'box', layout: 'horizontal', spacing: 'sm',
         contents: [
-          {
-            type: 'box', layout: 'vertical',
-            backgroundColor: '#fff8e1', paddingAll: '10px',
-            cornerRadius: '8px',
-            contents: [
-              { type: 'text', text: '📞 ご予約確定について', weight: 'bold', size: 'xs', color: '#bf6f00', wrap: true },
-              {
-                type: 'text', size: 'xs', color: '#555555', wrap: true, margin: 'sm',
-                text: '整骨院よりご予約内容の確認のお電話が届き次第、ご予約完了となります。\n当日〜翌日の間にご連絡いたします。\nご了承ください。',
-              },
-            ],
-          },
           { type: 'button', style: 'secondary', action: { type: 'postback', label: '修正する', data: 'action=main_menu' } },
-          { type: 'button', style: 'primary', color: '#1a6b5a', action: { type: 'postback', label: '予約を確定する', data: 'action=confirm_booking&ok=true' } },
+          { type: 'button', style: 'primary', color: '#1a6b5a', action: { type: 'postback', label: '確定する', data: 'action=confirm_booking&ok=true' } },
         ],
       },
     },
@@ -468,7 +465,7 @@ function makeInfoRow(label, value) {
     type: 'box', layout: 'horizontal',
     contents: [
       { type: 'text', text: label, size: 'sm', color: '#888888', flex: 3 },
-      { type: 'text', text: value, size: 'sm', flex: 5, wrap: true },
+      { type: 'text', text: value || '', size: 'sm', flex: 5, wrap: true },
     ],
   };
 }
@@ -488,26 +485,16 @@ function makeBookingComplete(booking, bookingId) {
           makeInfoRow('受付番号', bookingId),
           makeInfoRow('日時（希望）', `${booking.date} ${booking.time}`),
           makeInfoRow('施術', booking.menu.label),
+          {
+            type: 'text', size: 'xs', color: '#bf6f00', wrap: true, margin: 'md',
+            text: '📞 整骨院よりご予約内容の確認のお電話が届き次第、ご予約完了となります。当日〜翌日の間にご連絡いたします。ご了承ください。',
+          },
+          { type: 'text', text: `📞 ${CLINIC.tel}`, size: 'xs', color: '#1a6b5a', margin: 'sm', align: 'center' },
         ],
       },
       footer: {
-        type: 'box', layout: 'vertical', spacing: 'sm',
-        contents: [
-          {
-            type: 'box', layout: 'vertical',
-            backgroundColor: '#fff8e1', paddingAll: '12px',
-            cornerRadius: '8px',
-            contents: [
-              { type: 'text', text: '📞 ご予約確定について', weight: 'bold', size: 'sm', color: '#bf6f00', wrap: true },
-              {
-                type: 'text', size: 'xs', color: '#555555', wrap: true, margin: 'sm',
-                text: '整骨院よりご予約内容の確認のお電話が届き次第、ご予約完了となります。\n当日〜翌日の間にご連絡いたします。\nご了承ください。',
-              },
-            ],
-          },
-          { type: 'text', text: `📞 ${CLINIC.tel}`, size: 'xs', color: '#1a6b5a', align: 'center' },
-          { type: 'button', style: 'secondary', action: { type: 'postback', label: 'メニューに戻る', data: 'action=main_menu', displayText: 'メニューに戻る' } },
-        ],
+        type: 'box', layout: 'vertical',
+        contents: [{ type: 'button', style: 'secondary', action: { type: 'postback', label: 'メニューに戻る', data: 'action=main_menu', displayText: 'メニューに戻る' } }],
       },
     },
   };
