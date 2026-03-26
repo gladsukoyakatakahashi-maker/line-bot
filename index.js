@@ -2,7 +2,7 @@
 
 const express = require('express');
 const line = require('@line/bot-sdk');
-const { createClient } = require('@upstash/redis');
+const { Redis } = require('@upstash/redis');
 
 const lineConfig = {
   channelSecret: process.env.LINE_CHANNEL_SECRET,
@@ -10,7 +10,7 @@ const lineConfig = {
 };
 const lineClient = new line.Client(lineConfig);
 
-const redis = createClient({
+const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL,
   token: process.env.UPSTASH_REDIS_REST_TOKEN,
 });
@@ -205,9 +205,9 @@ async function sendMenu(replyToken) {
         layout: 'vertical',
         spacing: 'md',
         contents: [
-          flexButton('🆕 新規予約（初めての方）',      '🆕 新規予約（初めての方）'),
-          flexButton('🔄 再診予約（1ヶ月以上ぶり）',   '🔄 再診予約（1ヶ月以上ぶりの方）'),
-          flexButton('✏️ 予約変更・キャンセル',        '✏️ 予約変更・キャンセル'),
+          flexButton('🆕 新規予約（初めての方）',    '🆕 新規予約（初めての方）'),
+          flexButton('🔄 再診予約（1ヶ月以上ぶり）', '🔄 再診予約（1ヶ月以上ぶりの方）'),
+          flexButton('✏️ 予約変更・キャンセル',      '✏️ 予約変更・キャンセル'),
         ],
       },
       footer: {
