@@ -251,8 +251,3 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () =>
   console.log(`[Server] ポート ${PORT} で起動しました`)
 );
-```
-
-Commit changesを押してデプロイ完了後、UptimeRobotで3個目を以下のURLで登録してください。
-```
-https://line-bot-w6z3.onrender.com/ping2
