@@ -126,6 +126,7 @@ async function routeMenuSelection(userId, text, replyToken) {
     ));
   }
 
+  // どのワードが来てもメニューを表示
   return sendMenu(replyToken);
 }
 
@@ -156,14 +157,14 @@ async function continueFlow(userId, text, session, replyToken) {
 
     case 'await_symptoms': {
       session.symptoms = text;
-      const typeLabel = session.type === 'new' ? '新規' : '再診';
       await deleteSession(userId);
       return lineClient.replyMessage(replyToken, msg(
-        `✅ ${typeLabel}予約を受け付けました。\n\n` +
+        '✅ 仮予約を受け付けました。\n※予約はまだ確定していません。\n\n' +
         `📅 希望日時：${session.datetime}\n` +
         `📱 電話番号：${session.phone}\n` +
         `🩺 症状：${session.symptoms}\n\n` +
         '院より当日〜翌日中にお電話でご確認いたします。\n' +
+        '連絡が取れ次第予約確定になります。\nご了承ください。\n' +
         '※ 日・月曜日はお電話対応ができないため、火曜日以降のご連絡となります。\n\n' +
         '健やか整骨院 豊玉院\n📞 03-5946-9959'
       ));
@@ -205,9 +206,9 @@ async function sendMenu(replyToken) {
         layout: 'vertical',
         spacing: 'md',
         contents: [
-          flexButton('🆕 新規予約（初めての方）',    '🆕 新規予約（初めての方）'),
-          flexButton('🗓️ 予約（来院中の方）',        '🗓️ 予約（来院中の方）'),
-          flexButton('✏️ 予約変更・キャンセル',      '✏️ 予約変更・キャンセル'),
+          flexButton('🆕 新規予約（初めての方）',  '🆕 新規予約（初めての方）'),
+          flexButton('🗓️ 予約（来院中の方）',      '🗓️ 予約（来院中の方）'),
+          flexButton('✏️ 予約変更・キャンセル',    '✏️ 予約変更・キャンセル'),
         ],
       },
       footer: {
