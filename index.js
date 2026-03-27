@@ -59,6 +59,7 @@ app.get('/health', async (_req, res) => {
 });
 
 app.get('/ping', (_req, res) => res.send('pong'));
+app.get('/ping2', (_req, res) => res.send('pong'));
 
 app.post(
   '/webhook',
@@ -126,7 +127,6 @@ async function routeMenuSelection(userId, text, replyToken) {
     ));
   }
 
-  // どのワードが来てもメニューを表示
   return sendMenu(replyToken);
 }
 
@@ -251,3 +251,8 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () =>
   console.log(`[Server] ポート ${PORT} で起動しました`)
 );
+```
+
+Commit changesを押してデプロイ完了後、UptimeRobotで3個目を以下のURLで登録してください。
+```
+https://line-bot-w6z3.onrender.com/ping2
