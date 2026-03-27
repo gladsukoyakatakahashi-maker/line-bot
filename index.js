@@ -105,7 +105,7 @@ async function routeMenuSelection(userId, text, replyToken) {
     ));
   }
 
-  if (text.includes('再診予約')) {
+  if (text.includes('予約（来院中の方）')) {
     await setSession(userId, { type: 'revisit', step: 'await_datetime' });
     return lineClient.replyMessage(replyToken, msg(
       '📅 ご希望の日時を入力してください。\n例）6月10日 午前10時ごろ'
@@ -206,7 +206,7 @@ async function sendMenu(replyToken) {
         spacing: 'md',
         contents: [
           flexButton('🆕 新規予約（初めての方）',    '🆕 新規予約（初めての方）'),
-          flexButton('🔄 再診予約（1ヶ月以上ぶり）', '🔄 再診予約（1ヶ月以上ぶりの方）'),
+          flexButton('🗓️ 予約（来院中の方）',        '🗓️ 予約（来院中の方）'),
           flexButton('✏️ 予約変更・キャンセル',      '✏️ 予約変更・キャンセル'),
         ],
       },
