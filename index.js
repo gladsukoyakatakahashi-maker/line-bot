@@ -208,22 +208,30 @@ async function handleAiChat(userId, replyToken, userMessage, session) {
   const history = session.aiHistory || [];
 
   let aiReply = '';
-  try {
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash',
-      systemInstruction: SYSTEM_PROMPT,
-    });
+  const maxRetries = 3;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const model = genAI.getGenerativeModel({
+        model: 'gemini-2.0-flash',
+        systemInstruction: SYSTEM_PROMPT,
+      });
 
-    const chat = model.startChat({
-      history: history,
-      generationConfig: { maxOutputTokens: 600 },
-    });
+      const chat = model.startChat({
+        history: history,
+        generationConfig: { maxOutputTokens: 600 },
+      });
 
-    const result = await chat.sendMessage(userMessage);
-    aiReply = result.response.text();
-  } catch (e) {
-    console.error('Gemini API error:', e);
-    aiReply = '申し訳ございません。現在AIが応答できない状態です。\nお電話でお問い合わせください。\n📞 03-5946-9959';
+      const result = await chat.sendMessage(userMessage);
+      aiReply = result.response.text();
+      break;
+    } catch (e) {
+      console.error(`Gemini API error (attempt ${attempt}):`, e);
+      if (attempt < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+      } else {
+        aiReply = '申し訳ございません。現在AIが混み合っております。\n少し時間をおいてから再度お試しください🙏\n\nお急ぎの場合はお電話ください。\n📞 03-5946-9959';
+      }
+    }
   }
 
   // 履歴に追加（Gemini形式: role は "user" / "model"）
