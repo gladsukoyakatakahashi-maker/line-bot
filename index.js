@@ -212,7 +212,7 @@ async function handleAiChat(userId, replyToken, userMessage, session) {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       const model = genAI.getGenerativeModel({
-        model: 'gemini-2.0-flash-001',  // ← ここを修正
+        model: 'gemini-1.5-flash', // ← ここを修正
         systemInstruction: SYSTEM_PROMPT,
       });
 
