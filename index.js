@@ -3,7 +3,7 @@
 const express = require('express');
 const line = require('@line/bot-sdk');
 const { Redis } = require('@upstash/redis');
-const { GoogleGenAI } = require('@google/genai');
+const OpenAI = require('openai');
 
 const app = express();
 
@@ -20,8 +20,11 @@ const redis = new Redis({
   token: process.env.UPSTASH_REDIS_REST_TOKEN,
 });
 
-// Google Gemini（新SDK）
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+// Groq（OpenAI互換）
+const groq = new OpenAI({
+  apiKey: process.env.GROQ_API_KEY,
+  baseURL: 'https://api.groq.com/openai/v1',
+});
 
 // ============================================================
 // システムプロンプト（健やか整骨院 全店舗情報）
@@ -225,7 +228,7 @@ function buildMainMenu() {
 }
 
 // ============================================================
-// AI相談モードの処理（Gemini 新SDK）
+// AI相談モードの処理（Groq / OpenAI互換）
 // ============================================================
 async function handleAiChat(userId, replyToken, userMessage, session) {
   const history = session.aiHistory || [];
@@ -234,20 +237,21 @@ async function handleAiChat(userId, replyToken, userMessage, session) {
   const maxRetries = 3;
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      const chat = ai.chats.create({
-        model: 'gemini-2.0-flash',
-        config: {
-          systemInstruction: SYSTEM_PROMPT,
-          maxOutputTokens: 600,
-        },
-        history: history,
+      const completion = await groq.chat.completions.create({
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          ...history,
+          { role: 'user', content: userMessage },
+        ],
+        max_tokens: 600,
+        temperature: 0.7,
       });
 
-      const result = await chat.sendMessage({ message: userMessage });
-      aiReply = result.text;
+      aiReply = completion.choices[0].message.content;
       break;
     } catch (e) {
-      console.error(`Gemini API error (attempt ${attempt}):`, e);
+      console.error(`Groq API error (attempt ${attempt}):`, JSON.stringify(e));
       if (attempt < maxRetries) {
         await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
       } else {
@@ -258,10 +262,11 @@ async function handleAiChat(userId, replyToken, userMessage, session) {
 
   const updatedHistory = [
     ...history,
-    { role: 'user', parts: [{ text: userMessage }] },
-    { role: 'model', parts: [{ text: aiReply }] },
+    { role: 'user', content: userMessage },
+    { role: 'assistant', content: aiReply },
   ];
 
+  // 直近20往復（40件）を保持
   const trimmedHistory = updatedHistory.length > 40
     ? updatedHistory.slice(updatedHistory.length - 40)
     : updatedHistory;
