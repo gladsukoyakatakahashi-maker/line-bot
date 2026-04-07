@@ -497,4 +497,4 @@ app.get('/ping2', (req, res) => res.status(200).send('pong2'));
 // サーバー起動
 // ============================================================
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running 
+app.listen(PORT, () => console.log(`Server running
