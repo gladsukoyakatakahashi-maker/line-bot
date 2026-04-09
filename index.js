@@ -51,10 +51,11 @@ const SYSTEM_PROMPT = `あなたは「健やか整骨院」グループの公式
 - 絵文字：☀️😊👍💪✨を適度に使い明るい雰囲気を演出
 - 夜間・休日も24時間対応
 
-## グループ3事業の概要
+## グループ事業概要
 
 ### 🏥 健やか整骨院（整骨院・治療）
 国家資格者による治療院。痛み・不調・産後ケアなど。
+公式サイト：https://sukoyaka-seikotsuin.com/
 
 ### 💪 RISEGYM（ライズジム）- 医療系パーソナルジム
 - 運営：健やか整骨院グループ（株式会社Glad）
@@ -63,8 +64,17 @@ const SYSTEM_PROMPT = `あなたは「健やか整骨院」グループの公式
 - 特徴：完全個室・完全予約制・マンツーマン指導
 - 対象：姿勢改善・慢性的な痛み予防・リハビリ後の機能回復・加齢対策・ダイエット・ボディメイク
 - 会員の約9割が健やか整骨院の患者様
-- 展開地域：東京都（練馬区平和台・豊玉）、埼玉県朝霞市、栃木県宇都宮市
-- URL：https://www.reha-rise-gym.com/
+- 店舗：
+  ・RISEGYM 豊玉店（24時間ジム・パーソナルトレーニング・リハビリ）
+    住所：東京都練馬区豊玉北4-4-7 / TEL：080-3348-1397
+    練馬駅・桜台駅から徒歩7分
+  ・RISEGYM 平和台店（パーソナルトレーニング・完全個室3部屋）
+    住所：東京都練馬区早宮2-19-14 パーソナルヒルズサノ2階
+    平和台駅から徒歩4分
+  ・RISEGYM 平和台店【24時間ジム】
+    住所：東京都練馬区早宮2-19-14 パーソナルヒルズサノ3階（年中無休）
+  ・朝霞・宇都宮にも展開
+- 公式サイト：https://www.reha-rise-gym.com/
 
 ### ✨ RiseBeauty（ライズビューティー）- メディカルオイルエステ
 - 運営：健やか整骨院グループ
@@ -73,38 +83,57 @@ const SYSTEM_PROMPT = `あなたは「健やか整骨院」グループの公式
 - 保育士による無料託児あり（予約必須・平日午前9:30〜13:00のみ）
 - 産後1ヶ月検診後から利用可能
 - 施術メニュー：デコルテ・お腹・背中・フット・下半身・フェイシャル・全身・パーソナルオイル・ヘッドスパ・セルキュア4T plus+
-- こんな方におすすめ：肩こり・腰痛・産後の体型戻し・むくみ・慢性疲労・リラクゼーション
+- こんな方におすすめ：肩こり・腰痛・産後の体型戻し・むくみ・慢性疲労・リラクゼーション・ブライダル前ケア
 - 月1〜2回ペースがおすすめ
-- 本店：東京都練馬区早宮2-19-13 2階（平和台駅徒歩5分）TEL：03-6906-8162
-- 姉妹店：上板橋院（03-6912-3136）・朝霞院（048-487-8490）
-- URL：https://www.sukoyaka-rise-beauty.com/
+- 店舗：
+  ・RISE Beauty 平和台本店
+    住所：東京都練馬区早宮2-19-13 2階 / TEL：03-6906-8162
+    平和台駅から徒歩4〜5分
+  ・姉妹店：上板橋院（03-6912-3136）・朝霞院（048-487-8490）でも施術可能
+- 公式サイト：https://www.sukoyaka-rise-beauty.com/
 
 ## 健やか整骨院 グループ店舗情報
 
 ### 豊玉院（東京・練馬区）
-- 住所：〒176-0012 東京都練馬区豊玉北４丁目４−７−１０１
+- 住所：〒176-0012 東京都練馬区豊玉北4-4-7
 - 電話：03-5946-9959
 - 営業時間：火〜金 9:30〜13:00 / 15:00〜19:00、土 9:30〜13:00 / 15:00〜18:00
 - 定休日：日・月曜日、祝日営業
-- アクセス：練馬駅・桜台駅から徒歩7分・キッズスペースあり・保育士在中
+- アクセス：練馬駅・桜台駅から徒歩7分
+- 設備：キッズルーム完備・保育士在中・RISEGYM併設
 
 ### 平和台院（東京・練馬区）
-- 電話：03-6906-8162 / 定休日：日・月曜日 / 平和台駅から徒歩5〜8分
+- 住所：〒179-0085 東京都練馬区早宮2-19-13
+- 電話：03-6906-8162
+- 営業時間：火〜金 9:30〜13:00 / 15:00〜19:00、土 9:30〜13:00 / 15:00〜18:00
+- 定休日：日・月曜日、祝日営業
+- アクセス：平和台駅から徒歩4分
+- 設備：キッズルーム完備・保育士在中・RISEGYM併設・RiseBeauty併設・RehaRISE併設
 
 ### 上板橋院（東京・板橋区）
-- 電話：03-6912-3136 / 定休日：日・月曜日 / 上板橋駅から徒歩5分
+- 住所：〒174-0076 東京都板橋区上板橋2-1-12
+- 電話：03-6912-3136
+- 定休日：日・月曜日
+- アクセス：上板橋駅から徒歩3〜5分
+- 設備：キッズルーム完備・保育士在中・RiseBeauty施術対応
 
 ### 朝霞院（埼玉・朝霞市）
-- 電話：048-487-8490 / 定休日：日・月曜日 / 駐車場5台完備
+- 住所：〒351-0007 埼玉県朝霞市岡2-1-19
+- 電話：048-487-8490
+- 定休日：日・月曜日
+- 設備：キッズルーム完備・保育士在中・駐車場5台・RISEGYM併設・RiseBeauty施術対応
 
 ### 宇都宮院（栃木・宇都宮市）
-- 電話：028-666-4384 / 定休日：日・月曜日 / 駐車場10台・パーソナルジム併設
+- 住所：〒320-0065 栃木県宇都宮市駒生町1288-2
+- 電話：028-666-4384
+- 定休日：日・月曜日
+- 設備：駐車場10台・キッズルーム完備・保育士在中・パーソナルジム併設
 
 ## 整骨院 施術内容
 骨盤矯正・産後骨盤矯正・猫背矯正・首肩腰膝の痛み治療・電気治療・ハイボルテージ・
 楽トレ（EMS）・マッサージ・ストレッチ・テーピング・鍼灸治療・美容鍼・
 メディカルオイルマッサージ・酸素カプセル・交通事故治療（自賠責保険対応）・
-スポーツ外傷・リハビリ・パーソナルトレーニング
+スポーツ外傷・リハビリ・パーソナルトレーニング・コンディショニングトレーニング
 
 ## 回答スタイル
 - 丁寧かつ親しみやすい日本語（です・ます調）
@@ -140,8 +169,7 @@ function isBusinessHours() {
 }
 
 // ============================================================
-// 予約可能日・時間スロット
-// 【修正】曜日ごとに正しい午前＋午後スロットを返す
+// 予約可能日・時間スロット（午前＋午後対応）
 // ============================================================
 function getAvailableDays() {
   const days = [];
@@ -157,9 +185,7 @@ function getAvailableDays() {
 }
 
 function getTimeSlots(dayOfWeek) {
-  // 午前スロット（火〜土共通）
   const morning = ['9:30', '10:10', '10:50', '11:30', '12:10'];
-  // 午後スロット（土曜は18:00終了なので18:20なし）
   const afternoonWeekday = ['15:00', '15:40', '16:20', '17:00', '17:40', '18:20'];
   const afternoonSaturday = ['15:00', '15:40', '16:20', '17:00', '17:40'];
   if (dayOfWeek === 6) {
@@ -247,8 +273,7 @@ async function replyMessages(replyToken, messages) {
 }
 
 // ============================================================
-// 【C案】メインメニュー（6ボタン）
-// 整骨院予約 / 来院中予約 / 変更キャンセル / RISEGYM / RiseBeauty / ジョイ君相談
+// 【C案】メインメニュー（最大4ボタン）＋サブメニュー
 // ============================================================
 function buildMainMenu() {
   return {
@@ -268,8 +293,6 @@ function buildMainMenu() {
   };
 }
 
-// ※LINEのボタンテンプレートは最大4ボタンのため、
-// 予約変更・キャンセルとジョイ君相談はサブメニューに移動
 function buildSubMenu() {
   return {
     type: 'template',
@@ -280,25 +303,23 @@ function buildSubMenu() {
       actions: [
         { type: 'message', label: '✏️ 予約変更・キャンセル', text: '予約変更・キャンセル' },
         { type: 'message', label: '💬 ジョイ君に何でも相談', text: 'AI相談' },
-        { type: 'message', label: '🏠 メインメニューへ', text: 'メニュー' },
       ],
     },
   };
 }
 
 // ============================================================
-// ジョイ君 AI相談（会話履歴保持・カテゴリ対応）
+// ジョイ君 AI相談（カテゴリ別・会話履歴保持）
 // ============================================================
 async function handleAiChat(userId, replyToken, userMessage, session) {
   const history = session.aiHistory || [];
   const category = session.aiCategory || 'general';
 
-  // カテゴリに応じてシステムプロンプトの冒頭を強調
   let categoryHint = '';
   if (category === 'risegym') {
-    categoryHint = '※ユーザーはRISEGYM（パーソナルジム）についての相談をしています。RISEGYMの情報を中心に回答してください。';
+    categoryHint = '※ユーザーはRISEGYM（パーソナルジム）についての相談をしています。RISEGYMの情報を中心に、具体的な店舗・特徴・体験申込などを案内してください。';
   } else if (category === 'risebeauty') {
-    categoryHint = '※ユーザーはRiseBeauty（メディカルオイルエステ）についての相談をしています。RiseBeautyの情報を中心に回答してください。';
+    categoryHint = '※ユーザーはRiseBeauty（メディカルオイルエステ）についての相談をしています。施術メニュー・託児サービス・予約方法などRiseBeautyの情報を中心に案内してください。';
   }
 
   let aiReply = '';
@@ -306,7 +327,10 @@ async function handleAiChat(userId, replyToken, userMessage, session) {
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      const systemContent = categoryHint ? SYSTEM_PROMPT + '\n\n' + categoryHint : SYSTEM_PROMPT;
+      const systemContent = categoryHint
+        ? SYSTEM_PROMPT + '\n\n' + categoryHint
+        : SYSTEM_PROMPT;
+
       const msgList = [{ role: 'system', content: systemContent }]
         .concat(history)
         .concat([{ role: 'user', content: userMessage }]);
@@ -340,18 +364,18 @@ async function handleAiChat(userId, replyToken, userMessage, session) {
 
   await setSession(userId, { mode: 'ai_chat', aiHistory: trimmedHistory, aiCategory: category });
 
-  // カテゴリに応じてアクションボタンを変える
+  // カテゴリ別アクションボタン
   let actions;
   if (category === 'risegym') {
     actions = [
-      { type: 'message', label: '🆕 整骨院を予約する', text: '新規予約' },
       { type: 'message', label: '💪 RISEGYMをもっと聞く', text: 'RISEGYMについてもっと教えて' },
+      { type: 'message', label: '🆕 整骨院を予約する', text: '新規予約' },
       { type: 'message', label: '🏠 メニューへ戻る', text: 'メニュー' },
     ];
   } else if (category === 'risebeauty') {
     actions = [
-      { type: 'message', label: '✨ RiseBeautyの予約方法は？', text: 'RiseBeautyの予約方法を教えて' },
       { type: 'message', label: '✨ 施術メニューを聞く', text: 'RiseBeautyの施術メニューを教えて' },
+      { type: 'message', label: '✨ 予約方法を聞く', text: 'RiseBeautyの予約方法を教えて' },
       { type: 'message', label: '🏠 メニューへ戻る', text: 'メニュー' },
     ];
   } else {
@@ -374,28 +398,20 @@ async function handleAiChat(userId, replyToken, userMessage, session) {
 
 // ============================================================
 // 予約フロー（新規・来院中共通）
-// 【修正】時間スロット：午前＋午後を正しく表示
 // ============================================================
 async function handleBooking(userId, replyToken, text, session) {
   const step = session.step || 0;
   const type = session.bookingType;
 
-  // STEP2: 時間選択
+  // STEP2: 日付選択 → 時間選択へ
   if (step === 2) {
     const days = (session.availableDays || []).map(function(d) { return new Date(d); });
     const matched = days.find(function(d) { return formatDate(d) === text; });
     if (!matched) return replyText(replyToken, '表示されている日付からお選びください。');
 
     const slots = getTimeSlots(matched.getDay());
-    // 午前・午後に分けてボタン表示（最大4個）→ まず午前4枠を表示
-    const morningSlots = slots.filter(function(s) {
-      const hour = parseInt(s.split(':')[0]);
-      return hour < 13;
-    });
-    const afternoonSlots = slots.filter(function(s) {
-      const hour = parseInt(s.split(':')[0]);
-      return hour >= 13;
-    });
+    const morningSlots = slots.filter(function(s) { return parseInt(s.split(':')[0]) < 13; });
+    const afternoonSlots = slots.filter(function(s) { return parseInt(s.split(':')[0]) >= 13; });
 
     await setSession(userId, Object.assign({}, session, {
       selectedDate: matched.toISOString(),
@@ -406,36 +422,28 @@ async function handleBooking(userId, replyToken, text, session) {
       timeSelectPhase: 'morning',
     }));
 
-    const actions = morningSlots.slice(0, 4).map(function(s) {
+    const actions = morningSlots.slice(0, 3).map(function(s) {
       return { type: 'message', label: s, text: s };
     });
-    // 午後も見たい場合のボタン
-    if (afternoonSlots.length > 0) {
-      actions.push({ type: 'message', label: '午後の時間を見る▶', text: '午後の時間を見る' });
-    }
+    actions.push({ type: 'message', label: '午後の時間を見る▶', text: '午後の時間を見る' });
 
     return replyMessages(replyToken, [
       { type: 'text', text: formatDate(matched) + '\nご希望の時間をお選びください😊' },
       {
         type: 'template',
-        altText: '時間を選んでください',
-        template: {
-          type: 'buttons',
-          text: '【午前】の時間帯',
-          actions: actions.slice(0, 4),
-        },
+        altText: '午前の時間を選んでください',
+        template: { type: 'buttons', text: '【午前】9:30〜12:10', actions: actions },
       },
     ]);
   }
 
-  // STEP3: 時間確定 or 午後ページ切り替え
+  // STEP3: 時間選択
   if (step === 3) {
     const allSlots = session.allSlots || [];
-    const afternoonSlots = session.afternoonSlots || [];
     const morningSlots = session.morningSlots || [];
-    const timeSelectPhase = session.timeSelectPhase || 'morning';
+    const afternoonSlots = session.afternoonSlots || [];
 
-    // 午後ページへ切り替え
+    // 午後ページへ
     if (text === '午後の時間を見る') {
       await setSession(userId, Object.assign({}, session, { timeSelectPhase: 'afternoon' }));
       const actions = afternoonSlots.slice(0, 3).map(function(s) {
@@ -445,35 +453,25 @@ async function handleBooking(userId, replyToken, text, session) {
       return replyMessages(replyToken, [{
         type: 'template',
         altText: '午後の時間を選んでください',
-        template: {
-          type: 'buttons',
-          text: '【午後】の時間帯',
-          actions: actions.slice(0, 4),
-        },
+        template: { type: 'buttons', text: '【午後】15:00〜', actions: actions },
       }]);
     }
 
-    // 午前ページへ切り替え
+    // 午前ページへ
     if (text === '午前の時間を見る') {
       await setSession(userId, Object.assign({}, session, { timeSelectPhase: 'morning' }));
-      const actions = morningSlots.slice(0, 4).map(function(s) {
+      const actions = morningSlots.slice(0, 3).map(function(s) {
         return { type: 'message', label: s, text: s };
       });
-      if (afternoonSlots.length > 0) {
-        actions.push({ type: 'message', label: '午後の時間を見る▶', text: '午後の時間を見る' });
-      }
+      actions.push({ type: 'message', label: '午後の時間を見る▶', text: '午後の時間を見る' });
       return replyMessages(replyToken, [{
         type: 'template',
         altText: '午前の時間を選んでください',
-        template: {
-          type: 'buttons',
-          text: '【午前】の時間帯',
-          actions: actions.slice(0, 4),
-        },
+        template: { type: 'buttons', text: '【午前】9:30〜12:10', actions: actions },
       }]);
     }
 
-    // 時間が選択された
+    // 時間確定
     if (!allSlots.includes(text)) {
       return replyText(replyToken, '表示されている時間からお選びください。');
     }
@@ -481,7 +479,7 @@ async function handleBooking(userId, replyToken, text, session) {
     return replyText(replyToken, '📱 お電話番号を入力してください。\n（例：090-1234-5678）');
   }
 
-  // STEP4: 電話番号入力 → 症状選択へ
+  // STEP4: 電話番号入力
   if (step === 4) {
     if (!/[\d\-（）()]{10,}/.test(text)) {
       return replyText(replyToken, '電話番号を正しい形式で入力してください。\n例：090-1234-5678');
@@ -576,12 +574,13 @@ async function handleEvent(event) {
     return client.replyMessage(replyToken, [
       { type: 'text', text: 'メニューに戻ります☀️' },
       buildMainMenu(),
+      buildSubMenu(),
     ]);
   }
 
-  // AI相談モード中（予約系ボタン以外はすべてジョイ君が回答）
-  const bookingKeywords = ['新規予約', '来院中の予約', 'RISEGYM相談', 'RiseBeauty相談', 'AI相談', '予約変更・キャンセル'];
-  if (session.mode === 'ai_chat' && !bookingKeywords.includes(text)) {
+  // AI相談モード中（予約系キーワード以外はすべてジョイ君が回答）
+  const menuKeywords = ['新規予約', '来院中の予約', 'RISEGYM相談', 'RiseBeauty相談', 'AI相談', '予約変更・キャンセル'];
+  if (session.mode === 'ai_chat' && !menuKeywords.includes(text)) {
     return handleAiChat(userId, replyToken, text, session);
   }
 
@@ -594,9 +593,7 @@ async function handleEvent(event) {
   if (text === '新規予約') {
     const days = getAvailableDays();
     const newSession = {
-      mode: 'booking',
-      bookingType: 'new',
-      step: 2,
+      mode: 'booking', bookingType: 'new', step: 2,
       availableDays: days.map(function(d) { return d.toISOString(); }),
     };
     await setSession(userId, newSession);
@@ -621,9 +618,7 @@ async function handleEvent(event) {
   if (text === '来院中の予約') {
     const days = getAvailableDays();
     const newSession = {
-      mode: 'booking',
-      bookingType: 'returning',
-      step: 2,
+      mode: 'booking', bookingType: 'returning', step: 2,
       availableDays: days.map(function(d) { return d.toISOString(); }),
     };
     await setSession(userId, newSession);
@@ -644,25 +639,31 @@ async function handleEvent(event) {
     ]);
   }
 
-  // ── RISEGYM相談（カテゴリ付きAIモード）──
+  // ── RISEGYM相談 ──
   if (text === 'RISEGYM相談') {
     const existingHistory = (session.aiCategory === 'risegym' ? session.aiHistory : null) || [];
     await setSession(userId, { mode: 'ai_chat', aiHistory: existingHistory, aiCategory: 'risegym' });
     return replyText(replyToken,
       '💪 RISEGYMのご相談ですね！\n\n' +
-      'RISEGYMは健やか整骨院グループが運営する医療系パーソナルジムです。\n国家資格者がマンツーマンで指導する完全個室のジムです😊\n\n' +
-      'トレーニング内容・料金・体験・店舗など、何でもお気軽にご質問ください！\n\n' +
+      'RISEGYMは健やか整骨院グループが運営する医療系パーソナルジムです。\n' +
+      '国家資格者がマンツーマンで指導する完全個室のジムです😊\n\n' +
+      '豊玉・平和台・朝霞・宇都宮に展開中！\n' +
+      '詳細はこちら👉 https://www.reha-rise-gym.com/\n\n' +
+      'トレーニング内容・体験・店舗など、何でもお気軽にご質問ください！\n\n' +
       '（メニューに戻るには「メニュー」と送ってください）'
     );
   }
 
-  // ── RiseBeauty相談（カテゴリ付きAIモード）──
+  // ── RiseBeauty相談 ──
   if (text === 'RiseBeauty相談') {
     const existingHistory = (session.aiCategory === 'risebeauty' ? session.aiHistory : null) || [];
     await setSession(userId, { mode: 'ai_chat', aiHistory: existingHistory, aiCategory: 'risebeauty' });
     return replyText(replyToken,
       '✨ RiseBeautyのご相談ですね！\n\n' +
-      'RiseBeautyは整骨院が運営するメディカルオイルエステサロンです。\n医療従事者が解剖学的知識に基づいて施術します。保育士による無料託児もあります😊\n\n' +
+      'RiseBeautyは整骨院が運営するメディカルオイルエステサロンです。\n' +
+      '医療従事者が解剖学的知識に基づいて施術します。\n' +
+      '保育士による無料託児もあります😊\n\n' +
+      '詳細はこちら👉 https://www.sukoyaka-rise-beauty.com/\n\n' +
       '施術内容・予約方法・店舗など、お気軽にご質問ください！\n\n' +
       '（メニューに戻るには「メニュー」と送ってください）'
     );
@@ -701,7 +702,7 @@ async function handleEvent(event) {
     );
   }
 
-  // ── それ以外はメインメニュー ──
+  // ── それ以外はメインメニュー＋サブメニュー ──
   return client.replyMessage(replyToken, [buildMainMenu(), buildSubMenu()]);
 }
 
