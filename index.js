@@ -142,7 +142,14 @@ const SYSTEM_PROMPT = `あなたは「健やか整骨院」グループの公式
 - 緊急症状（激しい胸痛・呼吸困難・麻痺など）は迷わず救急を勧める
 - 料金詳細は「院にお問い合わせください」と案内
 - 予約確定には院からの電話確認が必要な旨を伝える
-- このLINEから24時間いつでも仮予約可能（豊玉院のみ）`;
+- このLINEから24時間いつでも仮予約可能（豊玉院のみ）
+
+## 【重要】言語ルール
+- 回答は必ず100%日本語で行うこと
+- 英単語・英語表記は一切使用禁止（例：shoulder→肩、knee→膝、lower back→腰、muscle→筋肉）
+- 身体部位・症状・施術名はすべて日本語で表記すること
+- 固有名詞（RISEGYM、RiseBeauty）のみ英語表記を許可する
+- ユーザーが英語で話しかけてきた場合も、回答は日本語で行うこと`;
 
 // ============================================================
 // 営業時間チェック
@@ -331,7 +338,12 @@ async function handleAiChat(userId, replyToken, userMessage, session) {
         ? SYSTEM_PROMPT + '\n\n' + categoryHint
         : SYSTEM_PROMPT;
 
-      const msgList = [{ role: 'system', content: systemContent }]
+      const japaneseRule = '【絶対ルール】返答は必ず完全な日本語で記述してください。英単語・英語表記（shoulder, knee, muscle, pain, back, neck, hip, ankle, joint, stiffness, rehabilitation, training, massage, treatmentなど）は一切使用禁止です。身体部位・症状・施術名はすべて日本語（肩、膝、筋肉、痛み、腰、首、股関節、足首、関節、こり、リハビリ、トレーニング、マッサージ、治療など）で表記してください。固有名詞（RISEGYM、RiseBeautyなど）のみ英語表記を許可します。';
+
+      const msgList = [
+        { role: 'system', content: systemContent },
+        { role: 'system', content: japaneseRule },
+      ]
         .concat(history)
         .concat([{ role: 'user', content: userMessage }]);
 
