@@ -3,7 +3,8 @@
 const express = require('express');
 const line = require('@line/bot-sdk');
 const { Redis } = require('@upstash/redis');
-const OpenAI = require('openai');
+const Anthropic = require('@anthropic-ai/sdk');
+const nodemailer = require('nodemailer');
 
 const app = express();
 
@@ -18,10 +19,47 @@ const redis = new Redis({
   token: process.env.UPSTASH_REDIS_REST_TOKEN,
 });
 
-const groq = new OpenAI({
-  apiKey: process.env.GROQ_API_KEY,
-  baseURL: 'https://api.groq.com/openai/v1',
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
 });
+
+// ============================================================
+// メール送信設定（nodemailer / Gmail）
+// 環境変数：MAIL_USER / MAIL_PASS / MAIL_TO
+// ============================================================
+const mailer = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.MAIL_USER,
+    pass: process.env.MAIL_PASS,
+  },
+});
+
+async function sendBookingMail(bookingInfo) {
+  const subject = '【仮予約】' + bookingInfo.datetime + ' ' + bookingInfo.phone;
+  const body =
+    '健やか整骨院 豊玉院 LINEより仮予約が入りました。\n\n' +
+    '━━━━━━━━━━━━━━━━━━━━\n' +
+    '【予約種別】' + (bookingInfo.bookingType === 'new' ? '新規' : '来院中') + '\n' +
+    '【希望日時】' + bookingInfo.datetime + '\n' +
+    '【電話番号】' + bookingInfo.phone + '\n' +
+    '【症　　状】' + bookingInfo.symptoms + '\n' +
+    '━━━━━━━━━━━━━━━━━━━━\n\n' +
+    '※このメールはLINEボットから自動送信されています。\n' +
+    '当日〜翌日中にお電話でご確認ください。';
+
+  try {
+    await mailer.sendMail({
+      from: process.env.MAIL_USER,
+      to: process.env.MAIL_TO,
+      subject: subject,
+      text: body,
+    });
+    console.log('予約メール送信成功:', subject);
+  } catch (e) {
+    console.error('予約メール送信失敗:', e);
+  }
+}
 
 // ============================================================
 // 症状マスター
@@ -39,7 +77,7 @@ const SYMPTOMS_LIST = [
 ];
 
 // ============================================================
-// システムプロンプト（整骨院 + RISEGYM + RiseBeauty 全対応）
+// システムプロンプト（ジョイ君・全事業対応）
 // ============================================================
 const SYSTEM_PROMPT = `あなたは「健やか整骨院」グループの公式マスコットキャラクター「ジョイ君」です。
 太陽のように明るく元気なキャラクターで、患者・お客様の心強いコンシェルジュとして対応します。
@@ -58,76 +96,42 @@ const SYSTEM_PROMPT = `あなたは「健やか整骨院」グループの公式
 公式サイト：https://sukoyaka-seikotsuin.com/
 
 ### 💪 RISEGYM（ライズジム）- 医療系パーソナルジム
-- 運営：健やか整骨院グループ（株式会社Glad）
 - コンセプト：「整えてから鍛える」医療知識とトレーニングの融合
-- スタッフ：作業療法士・理学療法士・柔道整復師などの国家資格者が監修・在籍
+- スタッフ：作業療法士・理学療法士・柔道整復師などの国家資格者
 - 特徴：完全個室・完全予約制・マンツーマン指導
 - 対象：姿勢改善・慢性的な痛み予防・リハビリ後の機能回復・加齢対策・ダイエット・ボディメイク
-- 会員の約9割が健やか整骨院の患者様
-- 店舗：
-  ・RISEGYM 豊玉店（24時間ジム・パーソナルトレーニング・リハビリ）
-    住所：東京都練馬区豊玉北4-4-7 / TEL：080-3348-1397
-    練馬駅・桜台駅から徒歩7分
-  ・RISEGYM 平和台店（パーソナルトレーニング・完全個室3部屋）
-    住所：東京都練馬区早宮2-19-14 パーソナルヒルズサノ2階
-    平和台駅から徒歩4分
-  ・RISEGYM 平和台店【24時間ジム】
-    住所：東京都練馬区早宮2-19-14 パーソナルヒルズサノ3階（年中無休）
-  ・朝霞・宇都宮にも展開
+- 店舗：豊玉（TEL:080-3348-1397）・平和台・朝霞・宇都宮
 - 公式サイト：https://www.reha-rise-gym.com/
 
 ### ✨ RiseBeauty（ライズビューティー）- メディカルオイルエステ
-- 運営：健やか整骨院グループ
 - コンセプト：「毎日がんばる女性に、安心してゆるむ時間を」
 - 特徴：整骨院運営・医療従事者による解剖学的施術・無理な勧誘なし
 - 保育士による無料託児あり（予約必須・平日午前9:30〜13:00のみ）
 - 産後1ヶ月検診後から利用可能
 - 施術メニュー：デコルテ・お腹・背中・フット・下半身・フェイシャル・全身・パーソナルオイル・ヘッドスパ・セルキュア4T plus+
-- こんな方におすすめ：肩こり・腰痛・産後の体型戻し・むくみ・慢性疲労・リラクゼーション・ブライダル前ケア
-- 月1〜2回ペースがおすすめ
-- 店舗：
-  ・RISE Beauty 平和台本店
-    住所：東京都練馬区早宮2-19-13 2階 / TEL：03-6906-8162
-    平和台駅から徒歩4〜5分
-  ・姉妹店：上板橋院（03-6912-3136）・朝霞院（048-487-8490）でも施術可能
+- 本店：平和台（TEL:03-6906-8162）/ 姉妹店：上板橋・朝霞
 - 公式サイト：https://www.sukoyaka-rise-beauty.com/
 
 ## 健やか整骨院 グループ店舗情報
 
-### 豊玉院（東京・練馬区）
+### 豊玉院（メインLINE対応院）
 - 住所：〒176-0012 東京都練馬区豊玉北4-4-7
 - 電話：03-5946-9959
 - 営業時間：火〜金 9:30〜13:00 / 15:00〜19:00、土 9:30〜13:00 / 15:00〜18:00
 - 定休日：日・月曜日、祝日営業
-- アクセス：練馬駅・桜台駅から徒歩7分
-- 設備：キッズルーム完備・保育士在中・RISEGYM併設
+- アクセス：練馬駅・桜台駅から徒歩7分 / キッズルーム・保育士在中・RISEGYM併設
 
-### 平和台院（東京・練馬区）
-- 住所：〒179-0085 東京都練馬区早宮2-19-13
-- 電話：03-6906-8162
-- 営業時間：火〜金 9:30〜13:00 / 15:00〜19:00、土 9:30〜13:00 / 15:00〜18:00
-- 定休日：日・月曜日、祝日営業
-- アクセス：平和台駅から徒歩4分
-- 設備：キッズルーム完備・保育士在中・RISEGYM併設・RiseBeauty併設・RehaRISE併設
+### 平和台院
+- 電話：03-6906-8162 / 平和台駅から徒歩4分 / RISEGYM・RiseBeauty・RehaRISE併設
 
-### 上板橋院（東京・板橋区）
-- 住所：〒174-0076 東京都板橋区上板橋2-1-12
-- 電話：03-6912-3136
-- 定休日：日・月曜日
-- アクセス：上板橋駅から徒歩3〜5分
-- 設備：キッズルーム完備・保育士在中・RiseBeauty施術対応
+### 上板橋院
+- 電話：03-6912-3136 / 上板橋駅から徒歩3〜5分 / RiseBeauty施術対応
 
-### 朝霞院（埼玉・朝霞市）
-- 住所：〒351-0007 埼玉県朝霞市岡2-1-19
-- 電話：048-487-8490
-- 定休日：日・月曜日
-- 設備：キッズルーム完備・保育士在中・駐車場5台・RISEGYM併設・RiseBeauty施術対応
+### 朝霞院
+- 電話：048-487-8490 / 駐車場5台 / RISEGYM・RiseBeauty施術対応
 
-### 宇都宮院（栃木・宇都宮市）
-- 住所：〒320-0065 栃木県宇都宮市駒生町1288-2
-- 電話：028-666-4384
-- 定休日：日・月曜日
-- 設備：駐車場10台・キッズルーム完備・保育士在中・パーソナルジム併設
+### 宇都宮院
+- 電話：028-666-4384 / 駐車場10台 / パーソナルジム併設
 
 ## 整骨院 施術内容
 骨盤矯正・産後骨盤矯正・猫背矯正・首肩腰膝の痛み治療・電気治療・ハイボルテージ・
@@ -150,6 +154,14 @@ const SYSTEM_PROMPT = `あなたは「健やか整骨院」グループの公式
 - 身体部位・症状・施術名はすべて日本語で表記すること
 - 固有名詞（RISEGYM、RiseBeauty）のみ英語表記を許可する
 - ユーザーが英語で話しかけてきた場合も、回答は日本語で行うこと`;
+
+// ============================================================
+// 予約フロー中のAI割り込み用プロンプト（案B）
+// ============================================================
+const BOOKING_INTERRUPT_PROMPT = `あなたはジョイ君です。ユーザーは現在予約フローの途中ですが、質問をしてきました。
+質問に簡潔に答えた上で、必ず「予約を続ける」ボタンを案内してください。
+回答は2〜3文程度で簡潔にまとめてください。
+回答は必ず100%日本語で記述してください。英単語は使用禁止です。`;
 
 // ============================================================
 // 営業時間チェック
@@ -176,7 +188,7 @@ function isBusinessHours() {
 }
 
 // ============================================================
-// 予約可能日・時間スロット（午前＋午後対応）
+// 予約可能日・時間スロット
 // ============================================================
 function getAvailableDays() {
   const days = [];
@@ -195,9 +207,7 @@ function getTimeSlots(dayOfWeek) {
   const morning = ['9:30', '10:10', '10:50', '11:30', '12:10'];
   const afternoonWeekday = ['15:00', '15:40', '16:20', '17:00', '17:40', '18:20'];
   const afternoonSaturday = ['15:00', '15:40', '16:20', '17:00', '17:40'];
-  if (dayOfWeek === 6) {
-    return morning.concat(afternoonSaturday);
-  }
+  if (dayOfWeek === 6) return morning.concat(afternoonSaturday);
   return morning.concat(afternoonWeekday);
 }
 
@@ -208,7 +218,7 @@ function formatDate(d) {
 }
 
 // ============================================================
-// 症状クイックリプライ（全11症状＋完了ボタン＝12個・1ページ）
+// 症状クイックリプライ（全11症状＋完了ボタン・1ページ）
 // ============================================================
 function buildSymptomsQuickReply(selected) {
   const items = SYMPTOMS_LIST.map(function(s) {
@@ -280,7 +290,7 @@ async function replyMessages(replyToken, messages) {
 }
 
 // ============================================================
-// 【C案】メインメニュー（最大4ボタン）＋サブメニュー
+// メインメニュー / サブメニュー
 // ============================================================
 function buildMainMenu() {
   return {
@@ -313,9 +323,7 @@ function buildSubMenu() {
       ],
     },
   };
-}
-
-// ============================================================
+}// ============================================================
 // ジョイ君 AI相談（カテゴリ別・会話履歴保持）
 // ============================================================
 async function handleAiChat(userId, replyToken, userMessage, session) {
@@ -324,40 +332,32 @@ async function handleAiChat(userId, replyToken, userMessage, session) {
 
   let categoryHint = '';
   if (category === 'risegym') {
-    categoryHint = '※ユーザーはRISEGYM（パーソナルジム）についての相談をしています。RISEGYMの情報を中心に、具体的な店舗・特徴・体験申込などを案内してください。';
+    categoryHint = '※ユーザーはRISEGYM（パーソナルジム）についての相談をしています。RISEGYMの情報を中心に案内してください。';
   } else if (category === 'risebeauty') {
-    categoryHint = '※ユーザーはRiseBeauty（メディカルオイルエステ）についての相談をしています。施術メニュー・託児サービス・予約方法などRiseBeautyの情報を中心に案内してください。';
+    categoryHint = '※ユーザーはRiseBeauty（メディカルオイルエステ）についての相談をしています。RiseBeautyの情報を中心に案内してください。';
   }
+
+  const japaneseRule = '【絶対ルール】返答は必ず完全な日本語で記述してください。英単語（shoulder, knee, muscle, pain, back, neck, hip, ankle, joint, stiffness, rehabilitation, training, massage, treatmentなど）は一切使用禁止です。すべて日本語（肩、膝、筋肉、痛み、腰、首、股関節、足首、関節、こり、リハビリ、トレーニング、マッサージ、治療など）で表記してください。RISEGYM・RiseBeautyなど固有名詞のみ英語表記を許可します。';
+
+  const fullSystem = SYSTEM_PROMPT +
+    (categoryHint ? '\n\n' + categoryHint : '') +
+    '\n\n' + japaneseRule;
 
   let aiReply = '';
   const maxRetries = 3;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      const systemContent = categoryHint
-        ? SYSTEM_PROMPT + '\n\n' + categoryHint
-        : SYSTEM_PROMPT;
-
-      const japaneseRule = '【絶対ルール】返答は必ず完全な日本語で記述してください。英単語・英語表記（shoulder, knee, muscle, pain, back, neck, hip, ankle, joint, stiffness, rehabilitation, training, massage, treatmentなど）は一切使用禁止です。身体部位・症状・施術名はすべて日本語（肩、膝、筋肉、痛み、腰、首、股関節、足首、関節、こり、リハビリ、トレーニング、マッサージ、治療など）で表記してください。固有名詞（RISEGYM、RiseBeautyなど）のみ英語表記を許可します。';
-
-      const msgList = [
-        { role: 'system', content: systemContent },
-        { role: 'system', content: japaneseRule },
-      ]
-        .concat(history)
-        .concat([{ role: 'user', content: userMessage }]);
-
-      const completion = await groq.chat.completions.create({
-        model: 'llama-3.3-70b-versatile',
-        messages: msgList,
+      const response = await anthropic.messages.create({
+        model: 'claude-haiku-4-5-20251001',
         max_tokens: 600,
-        temperature: 0.7,
+        system: fullSystem,
+        messages: history.concat([{ role: 'user', content: userMessage }]),
       });
-
-      aiReply = completion.choices[0].message.content;
+      aiReply = response.content[0].text;
       break;
     } catch (e) {
-      console.error('Groq error attempt ' + attempt + ':', JSON.stringify(e));
+      console.error('Claude API error attempt ' + attempt + ':', JSON.stringify(e));
       if (attempt < maxRetries) {
         await new Promise(function(r) { setTimeout(r, 2000 * attempt); });
       } else {
@@ -369,14 +369,12 @@ async function handleAiChat(userId, replyToken, userMessage, session) {
   const updatedHistory = history
     .concat([{ role: 'user', content: userMessage }])
     .concat([{ role: 'assistant', content: aiReply }]);
-
   const trimmedHistory = updatedHistory.length > 40
     ? updatedHistory.slice(updatedHistory.length - 40)
     : updatedHistory;
 
   await setSession(userId, { mode: 'ai_chat', aiHistory: trimmedHistory, aiCategory: category });
 
-  // カテゴリ別アクションボタン
   let actions;
   if (category === 'risegym') {
     actions = [
@@ -409,22 +407,68 @@ async function handleAiChat(userId, replyToken, userMessage, session) {
 }
 
 // ============================================================
+// 【案B】予約フロー中のAI割り込み処理
+// ボタン外のテキストが来たらAIが回答→「予約を続ける」ボタンで元のステップへ
+// ============================================================
+async function handleBookingInterrupt(userId, replyToken, userMessage, session) {
+  const japaneseRule = '返答は必ず完全な日本語で。英単語使用禁止。';
+  const fullSystem = BOOKING_INTERRUPT_PROMPT + '\n\n' + SYSTEM_PROMPT + '\n\n' + japaneseRule;
+
+  let aiReply = '';
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 300,
+      system: fullSystem,
+      messages: [{ role: 'user', content: userMessage }],
+    });
+    aiReply = response.content[0].text;
+  } catch (e) {
+    console.error('Claude interrupt error:', e);
+    aiReply = 'ご質問ありがとうございます😊 詳しくは院へお気軽にお問い合わせください。';
+  }
+
+  // 「予約を続ける」ボタンで元のステップの案内を再表示
+  return replyMessages(replyToken, [
+    { type: 'text', text: aiReply },
+    {
+      type: 'template',
+      altText: '予約を続けますか？',
+      template: {
+        type: 'buttons',
+        text: '引き続き予約を続けますか？😊',
+        actions: [
+          { type: 'message', label: '✅ 予約を続ける', text: '予約を続ける' },
+          { type: 'message', label: '🏠 メニューへ戻る', text: 'メニュー' },
+        ],
+      },
+    },
+  ]);
+}
+
+// ============================================================
 // 予約フロー（新規・来院中共通）
 // ============================================================
 async function handleBooking(userId, replyToken, text, session) {
   const step = session.step || 0;
   const type = session.bookingType;
 
-  // STEP2: 日付選択 → 時間選択へ
+  // 「予約を続ける」→ 現在のステップを再表示
+  if (text === '予約を続ける') {
+    return resumeBookingStep(replyToken, session);
+  }
+
+  // STEP2: 日付選択
   if (step === 2) {
     const days = (session.availableDays || []).map(function(d) { return new Date(d); });
     const matched = days.find(function(d) { return formatDate(d) === text; });
-    if (!matched) return replyText(replyToken, '表示されている日付からお選びください。');
-
+    if (!matched) {
+      // ボタン外テキスト → AI割り込み
+      return handleBookingInterrupt(userId, replyToken, text, session);
+    }
     const slots = getTimeSlots(matched.getDay());
     const morningSlots = slots.filter(function(s) { return parseInt(s.split(':')[0]) < 13; });
     const afternoonSlots = slots.filter(function(s) { return parseInt(s.split(':')[0]) >= 13; });
-
     await setSession(userId, Object.assign({}, session, {
       selectedDate: matched.toISOString(),
       allSlots: slots,
@@ -433,12 +477,10 @@ async function handleBooking(userId, replyToken, text, session) {
       step: 3,
       timeSelectPhase: 'morning',
     }));
-
     const actions = morningSlots.slice(0, 3).map(function(s) {
       return { type: 'message', label: s, text: s };
     });
     actions.push({ type: 'message', label: '午後の時間を見る▶', text: '午後の時間を見る' });
-
     return replyMessages(replyToken, [
       { type: 'text', text: formatDate(matched) + '\nご希望の時間をお選びください😊' },
       {
@@ -455,7 +497,6 @@ async function handleBooking(userId, replyToken, text, session) {
     const morningSlots = session.morningSlots || [];
     const afternoonSlots = session.afternoonSlots || [];
 
-    // 午後ページへ
     if (text === '午後の時間を見る') {
       await setSession(userId, Object.assign({}, session, { timeSelectPhase: 'afternoon' }));
       const actions = afternoonSlots.slice(0, 3).map(function(s) {
@@ -469,7 +510,6 @@ async function handleBooking(userId, replyToken, text, session) {
       }]);
     }
 
-    // 午前ページへ
     if (text === '午前の時間を見る') {
       await setSession(userId, Object.assign({}, session, { timeSelectPhase: 'morning' }));
       const actions = morningSlots.slice(0, 3).map(function(s) {
@@ -483,9 +523,9 @@ async function handleBooking(userId, replyToken, text, session) {
       }]);
     }
 
-    // 時間確定
     if (!allSlots.includes(text)) {
-      return replyText(replyToken, '表示されている時間からお選びください。');
+      // ボタン外テキスト → AI割り込み
+      return handleBookingInterrupt(userId, replyToken, text, session);
     }
     await setSession(userId, Object.assign({}, session, { selectedTime: text, step: 4 }));
     return replyText(replyToken, '📱 お電話番号を入力してください。\n（例：090-1234-5678）');
@@ -494,7 +534,21 @@ async function handleBooking(userId, replyToken, text, session) {
   // STEP4: 電話番号入力
   if (step === 4) {
     if (!/[\d\-（）()]{10,}/.test(text)) {
-      return replyText(replyToken, '電話番号を正しい形式で入力してください。\n例：090-1234-5678');
+      // 電話番号でなければAI割り込み（ただし電話番号入力を再案内）
+      return replyMessages(replyToken, [
+        { type: 'text', text: '📱 お電話番号を入力してください。\n（例：090-1234-5678）\n\nご質問があればお気軽にどうぞ😊' },
+        {
+          type: 'template',
+          altText: 'メニュー',
+          template: {
+            type: 'buttons',
+            text: '予約をやめる場合はこちら',
+            actions: [
+              { type: 'message', label: '🏠 メニューへ戻る', text: 'メニュー' },
+            ],
+          },
+        },
+      ]);
     }
     await setSession(userId, Object.assign({}, session, { phone: text, step: 5, selectedSymptoms: [] }));
     return replyTextWithQuickReply(
@@ -532,9 +586,21 @@ async function handleBooking(userId, replyToken, text, session) {
           buildSymptomsQuickReply([])
         );
       }
+
+      // 予約完了処理
       const selectedDate = new Date(session.selectedDate);
       const datetime = formatDate(selectedDate) + ' ' + session.selectedTime;
       const symptomsText = symptomsIdsToNames(selectedSymptoms);
+
+      // ① メール送信（非同期・失敗してもLINE返答は続行）
+      sendBookingMail({
+        bookingType: type,
+        datetime: datetime,
+        phone: session.phone,
+        symptoms: symptomsText,
+      });
+
+      // ② LINEへ完了メッセージ
       const msg =
         '✅ 仮予約を受け付けました！\n※予約はまだ確定していません。\n\n' +
         '📅 希望日時：' + datetime + '\n' +
@@ -549,15 +615,74 @@ async function handleBooking(userId, replyToken, text, session) {
       return replyText(replyToken, msg);
     }
 
+    // 症状選択中のボタン外テキスト → AI割り込み
+    return handleBookingInterrupt(userId, replyToken, text, session);
+  }
+}
+
+// ============================================================
+// 「予約を続ける」→ 現在のステップを再表示する
+// ============================================================
+async function resumeBookingStep(replyToken, session) {
+  const step = session.step || 0;
+
+  if (step === 2) {
+    const days = (session.availableDays || []).map(function(d) { return new Date(d); });
+    const actions = days.slice(0, 4).map(function(d) {
+      return { type: 'message', label: formatDate(d), text: formatDate(d) };
+    });
+    return replyMessages(replyToken, [{
+      type: 'template',
+      altText: '日付を選んでください',
+      template: { type: 'buttons', text: 'ご希望の日をお選びください😊', actions: actions },
+    }]);
+  }
+
+  if (step === 3) {
+    const morningSlots = session.morningSlots || [];
+    const afternoonSlots = session.afternoonSlots || [];
+    const phase = session.timeSelectPhase || 'morning';
+    if (phase === 'afternoon') {
+      const actions = afternoonSlots.slice(0, 3).map(function(s) {
+        return { type: 'message', label: s, text: s };
+      });
+      actions.push({ type: 'message', label: '◀ 午前の時間を見る', text: '午前の時間を見る' });
+      return replyMessages(replyToken, [{
+        type: 'template',
+        altText: '時間を選んでください',
+        template: { type: 'buttons', text: '【午後】ご希望の時間をお選びください😊', actions: actions },
+      }]);
+    } else {
+      const actions = morningSlots.slice(0, 3).map(function(s) {
+        return { type: 'message', label: s, text: s };
+      });
+      actions.push({ type: 'message', label: '午後の時間を見る▶', text: '午後の時間を見る' });
+      return replyMessages(replyToken, [{
+        type: 'template',
+        altText: '時間を選んでください',
+        template: { type: 'buttons', text: '【午前】ご希望の時間をお選びください😊', actions: actions },
+      }]);
+    }
+  }
+
+  if (step === 4) {
+    return replyText(replyToken, '📱 お電話番号を入力してください。\n（例：090-1234-5678）');
+  }
+
+  if (step === 5) {
+    const selectedSymptoms = session.selectedSymptoms || [];
     const selectedNames = selectedSymptoms.length > 0
       ? '選択中：' + symptomsIdsToNames(selectedSymptoms)
       : '（まだ選択されていません）';
     return replyTextWithQuickReply(
       replyToken,
-      '症状をタップして選択してください😊\n' + selectedNames,
+      '🩺 症状をタップで選択してください✅\n' + selectedNames,
       buildSymptomsQuickReply(selectedSymptoms)
     );
   }
+
+  // フォールバック
+  return client.replyMessage(replyToken, buildMainMenu());
 }
 
 // ============================================================
@@ -590,18 +715,18 @@ async function handleEvent(event) {
     ]);
   }
 
-  // AI相談モード中（予約系キーワード以外はすべてジョイ君が回答）
+  // AI相談モード中
   const menuKeywords = ['新規予約', '来院中の予約', 'RISEGYM相談', 'RiseBeauty相談', 'AI相談', '予約変更・キャンセル'];
   if (session.mode === 'ai_chat' && !menuKeywords.includes(text)) {
     return handleAiChat(userId, replyToken, text, session);
   }
 
-  // 予約フロー中
+  // 予約フロー中（案B：ボタン外テキストはAI割り込みで対応）
   if (session.mode === 'booking' && session.step >= 2) {
     return handleBooking(userId, replyToken, text, session);
   }
 
-  // ── 新規予約（24時間対応）──
+  // 新規予約（24時間対応）
   if (text === '新規予約') {
     const days = getAvailableDays();
     const newSession = {
@@ -626,7 +751,7 @@ async function handleEvent(event) {
     ]);
   }
 
-  // ── 来院中の予約（24時間対応）──
+  // 来院中の予約（24時間対応）
   if (text === '来院中の予約') {
     const days = getAvailableDays();
     const newSession = {
@@ -651,7 +776,7 @@ async function handleEvent(event) {
     ]);
   }
 
-  // ── RISEGYM相談 ──
+  // RISEGYM相談
   if (text === 'RISEGYM相談') {
     const existingHistory = (session.aiCategory === 'risegym' ? session.aiHistory : null) || [];
     await setSession(userId, { mode: 'ai_chat', aiHistory: existingHistory, aiCategory: 'risegym' });
@@ -666,7 +791,7 @@ async function handleEvent(event) {
     );
   }
 
-  // ── RiseBeauty相談 ──
+  // RiseBeauty相談
   if (text === 'RiseBeauty相談') {
     const existingHistory = (session.aiCategory === 'risebeauty' ? session.aiHistory : null) || [];
     await setSession(userId, { mode: 'ai_chat', aiHistory: existingHistory, aiCategory: 'risebeauty' });
@@ -681,7 +806,7 @@ async function handleEvent(event) {
     );
   }
 
-  // ── AI相談（全般）──
+  // AI相談（全般）
   if (text === 'AI相談') {
     const existingHistory = session.aiHistory || [];
     await setSession(userId, { mode: 'ai_chat', aiHistory: existingHistory, aiCategory: 'general' });
@@ -691,7 +816,7 @@ async function handleEvent(event) {
     return replyText(replyToken, greetingText);
   }
 
-  // ── 予約変更・キャンセル ──
+  // 予約変更・キャンセル
   if (text === '予約変更・キャンセル') {
     await setSession(userId, { mode: 'change_cancel', step: 1 });
     return replyText(replyToken,
@@ -702,7 +827,7 @@ async function handleEvent(event) {
     );
   }
 
-  // ── 変更・キャンセル受付 ──
+  // 変更・キャンセル受付
   if (session.mode === 'change_cancel' && session.step === 1) {
     await clearSession(userId);
     return replyText(replyToken,
@@ -714,7 +839,7 @@ async function handleEvent(event) {
     );
   }
 
-  // ── それ以外はメインメニュー＋サブメニュー ──
+  // それ以外はメインメニュー＋サブメニュー
   return client.replyMessage(replyToken, [buildMainMenu(), buildSubMenu()]);
 }
 
