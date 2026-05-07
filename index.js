@@ -303,21 +303,6 @@ function buildMainMenu() {
       actions: [
         { type: 'message', label: '🆕 新規予約（初めての方）', text: '新規予約' },
         { type: 'message', label: '🗓️ 予約（来院中の方）', text: '来院中の予約' },
-        { type: 'message', label: '💪 RISEGYMに相談', text: 'RISEGYM相談' },
-        { type: 'message', label: '✨ RiseBeautyに相談', text: 'RiseBeauty相談' },
-      ],
-    },
-  };
-}
-
-function buildSubMenu() {
-  return {
-    type: 'template',
-    altText: 'その他メニュー',
-    template: {
-      type: 'buttons',
-      text: 'その他のご用件はこちら',
-      actions: [
         { type: 'message', label: '✏️ 予約変更・キャンセル', text: '予約変更・キャンセル' },
         { type: 'message', label: '💬 ジョイ君に何でも相談', text: 'AI相談' },
       ],
@@ -713,12 +698,11 @@ async function handleEvent(event) {
     return client.replyMessage(replyToken, [
       { type: 'text', text: 'メニューに戻ります☀️' },
       buildMainMenu(),
-      buildSubMenu(),
     ]);
   }
 
   // AI相談モード中
-  const menuKeywords = ['新規予約', '来院中の予約', 'RISEGYM相談', 'RiseBeauty相談', 'AI相談', '予約変更・キャンセル'];
+  const menuKeywords = ['新規予約', '来院中の予約', 'AI相談', '予約変更・キャンセル'];
   if (session.mode === 'ai_chat' && !menuKeywords.includes(text)) {
     return handleAiChat(userId, replyToken, text, session);
   }
@@ -778,37 +762,7 @@ async function handleEvent(event) {
     ]);
   }
 
-  // RISEGYM相談
-  if (text === 'RISEGYM相談') {
-    const existingHistory = (session.aiCategory === 'risegym' ? session.aiHistory : null) || [];
-    await setSession(userId, { mode: 'ai_chat', aiHistory: existingHistory, aiCategory: 'risegym' });
-    return replyText(replyToken,
-      '💪 RISEGYMのご相談ですね！\n\n' +
-      'RISEGYMは健やか整骨院グループが運営する医療系パーソナルジムです。\n' +
-      '国家資格者がマンツーマンで指導する完全個室のジムです😊\n\n' +
-      '豊玉・平和台・朝霞・宇都宮に展開中！\n' +
-      '詳細はこちら👉 https://www.reha-rise-gym.com/\n\n' +
-      'トレーニング内容・体験・店舗など、何でもお気軽にご質問ください！\n\n' +
-      '（メニューに戻るには「メニュー」と送ってください）'
-    );
-  }
-
-  // RiseBeauty相談
-  if (text === 'RiseBeauty相談') {
-    const existingHistory = (session.aiCategory === 'risebeauty' ? session.aiHistory : null) || [];
-    await setSession(userId, { mode: 'ai_chat', aiHistory: existingHistory, aiCategory: 'risebeauty' });
-    return replyText(replyToken,
-      '✨ RiseBeautyのご相談ですね！\n\n' +
-      'RiseBeautyは整骨院が運営するメディカルオイルエステサロンです。\n' +
-      '医療従事者が解剖学的知識に基づいて施術します。\n' +
-      '保育士による無料託児もあります😊\n\n' +
-      '詳細はこちら👉 https://www.sukoyaka-rise-beauty.com/\n\n' +
-      '施術内容・予約方法・店舗など、お気軽にご質問ください！\n\n' +
-      '（メニューに戻るには「メニュー」と送ってください）'
-    );
-  }
-
-  // AI相談（全般）
+  // AI相談（全般・RISEGYM・RiseBeautyも含めてジョイ君が対応）
   if (text === 'AI相談') {
     const existingHistory = session.aiHistory || [];
     await setSession(userId, { mode: 'ai_chat', aiHistory: existingHistory, aiCategory: 'general' });
@@ -842,7 +796,7 @@ async function handleEvent(event) {
   }
 
   // それ以外はメインメニュー＋サブメニュー
-  return client.replyMessage(replyToken, [buildMainMenu(), buildSubMenu()]);
+  return client.replyMessage(replyToken, buildMainMenu());
 }
 
 // ============================================================
