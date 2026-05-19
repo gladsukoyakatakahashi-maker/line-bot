@@ -141,10 +141,12 @@ const SYSTEM_PROMPT = `あなたは「健やか整骨院」グループの公式
 
 ## 回答スタイル
 - 丁寧かつ親しみやすい日本語（です・ます調）
-- 要点を分かりやすく、長すぎない回答
+- 【重要】回答は必ず3〜4文以内の短文でまとめること。長文・箇条書き・見出し（##）は使用禁止
+- 【重要】Markdownの記号（**、##、-など）は一切使用禁止。プレーンテキストのみで回答すること
+- 詳細情報（店舗一覧・施術内容の列挙など）は書かず「お気軽にご相談ください」で締めくくる
 - 医療診断・処方は行わない
 - 緊急症状（激しい胸痛・呼吸困難・麻痺など）は迷わず救急を勧める
-- 料金詳細は「院にお問い合わせください」と案内
+- 料金詳細は「院にお問い合わせください」の一言のみで案内し、詳細は書かない
 - 予約確定には院からの電話確認が必要な旨を伝える
 - このLINEから24時間いつでも仮予約可能（豊玉院のみ）
 
@@ -324,7 +326,7 @@ async function handleAiChat(userId, replyToken, userMessage, session) {
     categoryHint = '※ユーザーはRiseBeauty（メディカルオイルエステ）についての相談をしています。RiseBeautyの情報を中心に案内してください。';
   }
 
-  const japaneseRule = '【絶対ルール】返答は必ず完全な日本語で記述してください。英単語（shoulder, knee, muscle, pain, back, neck, hip, ankle, joint, stiffness, rehabilitation, training, massage, treatmentなど）は一切使用禁止です。すべて日本語（肩、膝、筋肉、痛み、腰、首、股関節、足首、関節、こり、リハビリ、トレーニング、マッサージ、治療など）で表記してください。RISEGYM・RiseBeautyなど固有名詞のみ英語表記を許可します。';
+  const japaneseRule = '【絶対ルール】①返答は必ず完全な日本語で。②英単語（shoulder, knee, muscle, pain, back, neck, hip, ankle, joint, stiffness, rehabilitation, training, massage, treatmentなど）は使用禁止。③回答は3〜4文以内の短文のみ。長文・箇条書き・見出し（##）・Markdown記号（**、-など）は絶対に使用禁止。④詳細な店舗一覧や施術内容の列挙はしない。⑤RISEGYM・RiseBeautyなど固有名詞のみ英語表記を許可。';
 
   const fullSystem = SYSTEM_PROMPT +
     (categoryHint ? '\n\n' + categoryHint : '') +
@@ -337,7 +339,7 @@ async function handleAiChat(userId, replyToken, userMessage, session) {
     try {
       const response = await anthropic.messages.create({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 600,
+        max_tokens: 300,
         system: fullSystem,
         messages: history.concat([{ role: 'user', content: userMessage }]),
       });
