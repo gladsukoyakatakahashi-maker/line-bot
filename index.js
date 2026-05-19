@@ -142,6 +142,7 @@ const SYSTEM_PROMPT = `あなたは「健やか整骨院」グループの公式
 ## 回答スタイル
 - 丁寧かつ親しみやすい日本語（です・ます調）
 - 【重要】回答は必ず3〜4文以内の短文でまとめること。長文・箇条書き・見出し（##）は使用禁止
+- 【重要】文と文の間は必ず改行を入れること。1文ごとに改行して読みやすくすること
 - 【重要】Markdownの記号（**、##、-など）は一切使用禁止。プレーンテキストのみで回答すること
 - 詳細情報（店舗一覧・施術内容の列挙など）は書かず「お気軽にご相談ください」で締めくくる
 - 医療診断・処方は行わない
@@ -326,7 +327,7 @@ async function handleAiChat(userId, replyToken, userMessage, session) {
     categoryHint = '※ユーザーはRiseBeauty（メディカルオイルエステ）についての相談をしています。RiseBeautyの情報を中心に案内してください。';
   }
 
-  const japaneseRule = '【絶対ルール】①返答は必ず完全な日本語で。②英単語（shoulder, knee, muscle, pain, back, neck, hip, ankle, joint, stiffness, rehabilitation, training, massage, treatmentなど）は使用禁止。③回答は3〜4文以内の短文のみ。長文・箇条書き・見出し（##）・Markdown記号（**、-など）は絶対に使用禁止。④詳細な店舗一覧や施術内容の列挙はしない。⑤RISEGYM・RiseBeautyなど固有名詞のみ英語表記を許可。';
+  const japaneseRule = '【絶対ルール】①返答は必ず完全な日本語で。②英単語（shoulder, knee, muscle, pain, back, neck, hip, ankle, joint, stiffness, rehabilitation, training, massage, treatmentなど）は使用禁止。③回答は3〜4文以内の短文のみ。長文・箇条書き・見出し（##）・Markdown記号（**、-など）は絶対に使用禁止。④必ず1文ごとに改行を入れて読みやすくすること。⑤詳細な店舗一覧や施術内容の列挙はしない。⑥RISEGYM・RiseBeautyなど固有名詞のみ英語表記を許可。';
 
   const fullSystem = SYSTEM_PROMPT +
     (categoryHint ? '\n\n' + categoryHint : '') +
