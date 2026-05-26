@@ -333,7 +333,7 @@ function buildMainMenu() {
         { type: 'message', label: '🆕 新規予約（初めての方）', text: '新規予約' },
         { type: 'message', label: '🗓️ 予約（来院中の方）', text: '来院中の予約' },
         { type: 'message', label: '✏️ 予約変更・キャンセル', text: '予約変更・キャンセル' },
-        { type: 'message', label: '💬 ジョイ君に何でも相談', text: 'AI相談' },
+        { type: 'message', label: '💬 AIジョイ君になんでも相談', text: 'AI相談' },
       ],
     },
   };
