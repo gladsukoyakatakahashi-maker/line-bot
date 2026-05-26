@@ -67,13 +67,13 @@ async function sendBookingMail(bookingInfo) {
 const SYMPTOMS_MAP = {
   '1': '首痛', '2': '肩こり', '3': '肩の痛み', '4': '腰痛', '5': '膝痛',
   '6': '股関節痛', '7': '足首痛', '8': '産後の骨盤矯正', '9': '交通事故の治療',
-  '10': 'トレーニング', '11': 'リハビリ',
+  '10': 'トレーニング', '11': 'リハビリ', '12': 'オイルエステ',
 };
 const SYMPTOMS_LIST = [
   { id: '1', name: '首痛' }, { id: '2', name: '肩こり' }, { id: '3', name: '肩の痛み' },
   { id: '4', name: '腰痛' }, { id: '5', name: '膝痛' }, { id: '6', name: '股関節痛' },
   { id: '7', name: '足首痛' }, { id: '8', name: '産後の骨盤矯正' }, { id: '9', name: '交通事故の治療' },
-  { id: '10', name: 'トレーニング' }, { id: '11', name: 'リハビリ' },
+  { id: '10', name: 'トレーニング' }, { id: '11', name: 'リハビリ' }, { id: '12', name: 'オイルエステ' },
 ];
 
 // ============================================================
@@ -240,7 +240,7 @@ function formatDate(d) {
 // 症状クイックリプライ（全11症状＋完了ボタン・1ページ）
 // ============================================================
 function buildSymptomsQuickReply(selected) {
-  // ✔ 選択完了を先頭に配置
+  // ✔ 選択完了を先頭に配置（合計13個：完了1＋症状12＝LINEの上限ちょうど）
   const items = [{
     type: 'action',
     action: { type: 'message', label: '✔ 選択完了', text: '症状確定' },
@@ -257,6 +257,15 @@ function buildSymptomsQuickReply(selected) {
     });
   });
   return { type: 'quickReply', items: items };
+}
+
+// 症状選択の案内文を生成
+function buildSymptomsMessage(selected) {
+  const selectedNames = selected.length > 0
+    ? '選択中：' + symptomsIdsToNames(selected)
+    : '';
+  return '🩺 症状をタップで選択してください✅\n選択完了後一番左にある「✔ 選択完了」を押してください' +
+    (selectedNames ? '\n\n' + selectedNames : '');
 }
 
 function symptomsIdsToNames(ids) {
@@ -470,7 +479,6 @@ async function handleBooking(userId, replyToken, text, session) {
     const days = (session.availableDays || []).map(function(d) { return new Date(d); });
     const matched = days.find(function(d) { return formatDate(d) === text; });
     if (!matched) {
-      // ボタン外テキスト → AI割り込み
       return handleBookingInterrupt(userId, replyToken, text, session);
     }
     const slots = getTimeSlots(matched.getDay());
@@ -482,99 +490,21 @@ async function handleBooking(userId, replyToken, text, session) {
       morningSlots: morningSlots,
       afternoonSlots: afternoonSlots,
       step: 3,
-      timeSelectPhase: 'morning',
     }));
-    const actions = morningSlots.slice(0, 4).map(function(s) {
-      return { type: 'message', label: s, text: s };
+    // 全スロットをクイックリプライで1画面表示
+    const timeItems = slots.map(function(s) {
+      return { type: 'action', action: { type: 'message', label: s, text: s } };
     });
-    // 午前5枠のうち4枠表示＋「午後を見る」で計5個 → LINEの上限4なので午前4枠表示
-    // 午前4枠＋「午後へ」ボタン → ページ切り替え方式
-    return replyMessages(replyToken, [
-      { type: 'text', text: formatDate(matched) + '\nご希望の時間をお選びください😊' },
-      {
-        type: 'template',
-        altText: '午前の時間を選んでください',
-        template: {
-          type: 'buttons',
-          text: '【午前①】9:30〜10:50',
-          actions: morningSlots.slice(0, 3).map(function(s) {
-            return { type: 'message', label: s, text: s };
-          }).concat([{ type: 'message', label: '次へ（10:50以降）▶', text: '午前後半を見る' }]),
-        },
-      },
-    ]);
+    return replyTextWithQuickReply(
+      replyToken,
+      formatDate(matched) + '\nご希望の時間をお選びください😊\n横スクロールで全時間帯を確認できます👇',
+      { type: 'quickReply', items: timeItems }
+    );
   }
 
-  // STEP3: 時間選択（午前前半→午前後半→午後前半→午後後半）
+  // STEP3: 時間確定
   if (step === 3) {
     const allSlots = session.allSlots || [];
-    const morningSlots = session.morningSlots || [];
-    const afternoonSlots = session.afternoonSlots || [];
-
-    // 午前後半（11:30〜12:10）ページ
-    if (text === '午前後半を見る') {
-      await setSession(userId, Object.assign({}, session, { timeSelectPhase: 'morning2' }));
-      const actions = morningSlots.slice(3).map(function(s) {
-        return { type: 'message', label: s, text: s };
-      });
-      actions.push({ type: 'message', label: '午後の時間を見る▶', text: '午後の時間を見る' });
-      actions.unshift({ type: 'message', label: '◀ 前へ', text: '午前前半を見る' });
-      return replyMessages(replyToken, [{
-        type: 'template',
-        altText: '午前の時間を選んでください',
-        template: { type: 'buttons', text: '【午前②】11:30〜12:10', actions: actions.slice(0, 4) },
-      }]);
-    }
-
-    // 午前前半（9:30〜10:50）ページ
-    if (text === '午前前半を見る') {
-      await setSession(userId, Object.assign({}, session, { timeSelectPhase: 'morning' }));
-      return replyMessages(replyToken, [{
-        type: 'template',
-        altText: '午前の時間を選んでください',
-        template: {
-          type: 'buttons',
-          text: '【午前①】9:30〜10:50',
-          actions: morningSlots.slice(0, 3).map(function(s) {
-            return { type: 'message', label: s, text: s };
-          }).concat([{ type: 'message', label: '次へ（10:50以降）▶', text: '午前後半を見る' }]),
-        },
-      }]);
-    }
-
-    // 午後前半ページ
-    if (text === '午後の時間を見る') {
-      await setSession(userId, Object.assign({}, session, { timeSelectPhase: 'afternoon' }));
-      const actions = afternoonSlots.slice(0, 3).map(function(s) {
-        return { type: 'message', label: s, text: s };
-      });
-      // 午後が4枠以上あれば後半ページへ
-      if (afternoonSlots.length > 3) {
-        actions.push({ type: 'message', label: '次へ（17:00以降）▶', text: '午後後半を見る' });
-      } else {
-        actions.push({ type: 'message', label: '◀ 午前の時間を見る', text: '午前後半を見る' });
-      }
-      return replyMessages(replyToken, [{
-        type: 'template',
-        altText: '午後の時間を選んでください',
-        template: { type: 'buttons', text: '【午後①】15:00〜16:20', actions: actions },
-      }]);
-    }
-
-    // 午後後半ページ（17:00〜）
-    if (text === '午後後半を見る') {
-      await setSession(userId, Object.assign({}, session, { timeSelectPhase: 'afternoon2' }));
-      const actions = afternoonSlots.slice(3).map(function(s) {
-        return { type: 'message', label: s, text: s };
-      });
-      actions.push({ type: 'message', label: '◀ 前へ', text: '午後の時間を見る' });
-      return replyMessages(replyToken, [{
-        type: 'template',
-        altText: '午後の時間を選んでください',
-        template: { type: 'buttons', text: '【午後②】17:00〜', actions: actions.slice(0, 4) },
-      }]);
-    }
-
     if (!allSlots.includes(text)) {
       return handleBookingInterrupt(userId, replyToken, text, session);
     }
@@ -610,7 +540,7 @@ async function handleBooking(userId, replyToken, text, session) {
     await setSession(userId, Object.assign({}, session, { phone: normalized, step: 5, selectedSymptoms: [] }));
     return replyTextWithQuickReply(
       replyToken,
-      '🩺 気になる症状をタップしてください✅\n（複数選択できます）\n\n選び終わったら「✔ 選択完了」を押してください',
+      buildSymptomsMessage([]),
       buildSymptomsQuickReply([])
     );
   }
@@ -630,7 +560,7 @@ async function handleBooking(userId, replyToken, text, session) {
         : '（まだ選択されていません）';
       return replyTextWithQuickReply(
         replyToken,
-        '🩺 症状をタップで選択してください✅\n' + selectedNames,
+        buildSymptomsMessage(newSelected),
         buildSymptomsQuickReply(newSelected)
       );
     }
@@ -685,68 +615,26 @@ async function resumeBookingStep(replyToken, session) {
 
   if (step === 2) {
     const days = (session.availableDays || []).map(function(d) { return new Date(d); });
-    const actions = days.slice(0, 4).map(function(d) {
-      return { type: 'message', label: formatDate(d), text: formatDate(d) };
+    const dateItems = days.map(function(d) {
+      return { type: 'action', action: { type: 'message', label: formatDate(d), text: formatDate(d) } };
     });
-    return replyMessages(replyToken, [{
-      type: 'template',
-      altText: '日付を選んでください',
-      template: { type: 'buttons', text: 'ご希望の日をお選びください😊', actions: actions },
-    }]);
+    return replyTextWithQuickReply(
+      replyToken,
+      'ご希望の日をお選びください😊\n横スクロールで10日分確認できます👇',
+      { type: 'quickReply', items: dateItems }
+    );
   }
 
   if (step === 3) {
-    const morningSlots = session.morningSlots || [];
-    const afternoonSlots = session.afternoonSlots || [];
-    const phase = session.timeSelectPhase || 'morning';
-    if (phase === 'afternoon') {
-      const actions = afternoonSlots.slice(0, 3).map(function(s) {
-        return { type: 'message', label: s, text: s };
-      });
-      if (afternoonSlots.length > 3) {
-        actions.push({ type: 'message', label: '次へ（17:00以降）▶', text: '午後後半を見る' });
-      } else {
-        actions.push({ type: 'message', label: '◀ 午前の時間を見る', text: '午前後半を見る' });
-      }
-      return replyMessages(replyToken, [{
-        type: 'template',
-        altText: '時間を選んでください',
-        template: { type: 'buttons', text: '【午後①】15:00〜16:20', actions: actions },
-      }]);
-    } else if (phase === 'afternoon2') {
-      const actions = afternoonSlots.slice(3).map(function(s) {
-        return { type: 'message', label: s, text: s };
-      });
-      actions.push({ type: 'message', label: '◀ 前へ', text: '午後の時間を見る' });
-      return replyMessages(replyToken, [{
-        type: 'template',
-        altText: '時間を選んでください',
-        template: { type: 'buttons', text: '【午後②】17:00〜', actions: actions.slice(0, 4) },
-      }]);
-    } else if (phase === 'morning2') {
-      const actions = morningSlots.slice(3).map(function(s) {
-        return { type: 'message', label: s, text: s };
-      });
-      actions.push({ type: 'message', label: '午後の時間を見る▶', text: '午後の時間を見る' });
-      actions.unshift({ type: 'message', label: '◀ 前へ', text: '午前前半を見る' });
-      return replyMessages(replyToken, [{
-        type: 'template',
-        altText: '時間を選んでください',
-        template: { type: 'buttons', text: '【午前②】11:30〜12:10', actions: actions.slice(0, 4) },
-      }]);
-    } else {
-      return replyMessages(replyToken, [{
-        type: 'template',
-        altText: '時間を選んでください',
-        template: {
-          type: 'buttons',
-          text: '【午前①】9:30〜10:50',
-          actions: morningSlots.slice(0, 3).map(function(s) {
-            return { type: 'message', label: s, text: s };
-          }).concat([{ type: 'message', label: '次へ（10:50以降）▶', text: '午前後半を見る' }]),
-        },
-      }]);
-    }
+    const allSlots = session.allSlots || [];
+    const timeItems = allSlots.map(function(s) {
+      return { type: 'action', action: { type: 'message', label: s, text: s } };
+    });
+    return replyTextWithQuickReply(
+      replyToken,
+      'ご希望の時間をお選びください😊\n横スクロールで全時間帯を確認できます👇',
+      { type: 'quickReply', items: timeItems }
+    );
   }
 
   if (step === 4) {
@@ -755,17 +643,13 @@ async function resumeBookingStep(replyToken, session) {
 
   if (step === 5) {
     const selectedSymptoms = session.selectedSymptoms || [];
-    const selectedNames = selectedSymptoms.length > 0
-      ? '選択中：' + symptomsIdsToNames(selectedSymptoms)
-      : '（まだ選択されていません）';
     return replyTextWithQuickReply(
       replyToken,
-      '🩺 症状をタップで選択してください✅\n' + selectedNames,
+      buildSymptomsMessage(selectedSymptoms),
       buildSymptomsQuickReply(selectedSymptoms)
     );
   }
 
-  // フォールバック
   return client.replyMessage(replyToken, buildMainMenu());
 }
 
@@ -818,20 +702,14 @@ async function handleEvent(event) {
     };
     await setSession(userId, newSession);
     const prefix = isBusinessHours() ? '' : '☀️ 営業時間外でも仮予約は24時間受け付けています！\n院より翌営業日にお電話でご確認いたします。\n\n';
-    return replyMessages(replyToken, [
-      { type: 'text', text: prefix + '新規予約を承ります😊\nご希望の日をお選びください。' },
-      {
-        type: 'template',
-        altText: '日付を選んでください',
-        template: {
-          type: 'buttons',
-          text: '※直近4日を表示しています',
-          actions: days.slice(0, 4).map(function(d) {
-            return { type: 'message', label: formatDate(d), text: formatDate(d) };
-          }),
-        },
-      },
-    ]);
+    const dateItems = days.map(function(d) {
+      return { type: 'action', action: { type: 'message', label: formatDate(d), text: formatDate(d) } };
+    });
+    return replyTextWithQuickReply(
+      replyToken,
+      prefix + '新規予約を承ります😊\nご希望の日をお選びください。\n横スクロールで10日分確認できます👇',
+      { type: 'quickReply', items: dateItems }
+    );
   }
 
   // 来院中の予約（24時間対応）
@@ -843,20 +721,14 @@ async function handleEvent(event) {
     };
     await setSession(userId, newSession);
     const prefix = isBusinessHours() ? '' : '☀️ 営業時間外でも仮予約は24時間受け付けています！\n院より翌営業日にお電話でご確認いたします。\n\n';
-    return replyMessages(replyToken, [
-      { type: 'text', text: prefix + 'ご予約を承ります😊\nご希望の日をお選びください。' },
-      {
-        type: 'template',
-        altText: '日付を選んでください',
-        template: {
-          type: 'buttons',
-          text: '※直近4日を表示しています',
-          actions: days.slice(0, 4).map(function(d) {
-            return { type: 'message', label: formatDate(d), text: formatDate(d) };
-          }),
-        },
-      },
-    ]);
+    const dateItems = days.map(function(d) {
+      return { type: 'action', action: { type: 'message', label: formatDate(d), text: formatDate(d) } };
+    });
+    return replyTextWithQuickReply(
+      replyToken,
+      prefix + 'ご予約を承ります😊\nご希望の日をお選びください。\n横スクロールで10日分確認できます👇',
+      { type: 'quickReply', items: dateItems }
+    );
   }
 
   // AI相談（全般・RISEGYM・RiseBeautyも含めてジョイ君が対応）
